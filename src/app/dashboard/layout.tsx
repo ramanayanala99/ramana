@@ -3,13 +3,14 @@ import { useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import { useAppStore } from "@/lib/store";
-import { BookOpen, LayoutDashboard, FileText, Database, Settings, Users, LogOut, Plus, BarChart3, CreditCard } from "lucide-react";
+import { BookOpen, LayoutDashboard, FileText, Database, Settings, Users, LogOut, Plus, BarChart3, CreditCard, LayoutTemplate } from "lucide-react";
 
 const navItems = [
   { href: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
   { href: "/dashboard/create", icon: Plus, label: "Create Paper" },
   { href: "/dashboard/papers", icon: FileText, label: "My Papers" },
   { href: "/dashboard/questions", icon: Database, label: "Question Bank" },
+  { href: "/dashboard/templates", icon: LayoutTemplate, label: "Templates" },
   { href: "/dashboard/admin", icon: Users, label: "Admin" },
   { href: "/dashboard/analytics", icon: BarChart3, label: "Analytics" },
   { href: "/dashboard/billing", icon: CreditCard, label: "Billing" },

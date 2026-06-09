@@ -112,7 +112,24 @@ export const SAMPLE_QUESTIONS: Question[] = [
   },
 ];
 
-export const TEMPLATES = [
+export interface TemplateRow {
+  type: string;
+  count: number;
+  marksEach: number;
+}
+
+export interface PaperTemplate {
+  id: string;
+  name: string;
+  duration: number;
+  totalMarks: number;
+  distribution: TemplateRow[];
+  isCustom?: boolean;
+  board?: string;
+  createdBy?: string;
+}
+
+export const TEMPLATES: PaperTemplate[] = [
   {
     id: "unit-test", name: "Unit Test", duration: 45, totalMarks: 25,
     distribution: [

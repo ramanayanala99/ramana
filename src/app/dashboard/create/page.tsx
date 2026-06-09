@@ -1,21 +1,23 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { useAppStore } from "@/lib/store";
-import { INDIAN_BOARDS, SUBJECTS, CLASSES, EXAM_TYPES, TEMPLATES, QUESTION_TYPES, DIFFICULTY_LEVELS, Question } from "@/lib/data";
-import { Zap, FileText, CheckCircle, Wand2, Plus, Trash2 } from "lucide-react";
+import { INDIAN_BOARDS, SUBJECTS, CLASSES, EXAM_TYPES, TEMPLATES, QUESTION_TYPES, DIFFICULTY_LEVELS, Question, PaperTemplate } from "@/lib/data";
+import { Zap, FileText, CheckCircle, Wand2, Plus, Settings } from "lucide-react";
 
 const STEPS = ["Basic Info", "Template", "Select Questions", "Review & Export"];
 
 export default function CreatePaperPage() {
   const router = useRouter();
-  const { user, questions, addPaper } = useAppStore();
+  const { user, questions, addPaper, customTemplates } = useAppStore();
+  const allTemplates = [...TEMPLATES, ...customTemplates];
   const [step, setStep] = useState(0);
   const [form, setForm] = useState({
     title: "", subject: SUBJECTS[0], class: "10", board: "CBSE",
     examType: "Unit Test", duration: 45, totalMarks: 25,
   });
-  const [selectedTemplate, setSelectedTemplate] = useState(TEMPLATES[0]);
+  const [selectedTemplate, setSelectedTemplate] = useState<PaperTemplate>(TEMPLATES[0]);
   const [selectedQuestions, setSelectedQuestions] = useState<Question[]>([]);
   const [filterType, setFilterType] = useState("All");
   const [filterDiff, setFilterDiff] = useState("All");
@@ -114,14 +116,49 @@ export default function CreatePaperPage() {
 
         {step === 1 && (
           <div>
-            <h2 className="font-bold text-gray-900 mb-4">Choose a Template</h2>
-            <div className="grid sm:grid-cols-2 gap-4">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="font-bold text-gray-900">Choose a Template</h2>
+              <Link href="/dashboard/templates" target="_blank"
+                className="flex items-center gap-1.5 text-sm text-indigo-600 hover:text-indigo-700 font-medium transition">
+                <Settings className="w-4 h-4" /> Manage Templates
+              </Link>
+            </div>
+
+            {/* Custom templates first if any */}
+            {customTemplates.length > 0 && (
+              <>
+                <div className="text-xs font-semibold text-indigo-600 uppercase tracking-wide mb-2">My Custom Templates</div>
+                <div className="grid sm:grid-cols-2 gap-3 mb-5">
+                  {customTemplates.map((t) => (
+                    <button key={t.id}
+                      onClick={() => { setSelectedTemplate(t); setForm({ ...form, duration: t.duration, totalMarks: t.totalMarks }); }}
+                      className={`text-left p-4 rounded-xl border-2 transition ${selectedTemplate.id === t.id ? "border-indigo-600 bg-indigo-50" : "border-indigo-100 bg-indigo-50/40 hover:border-indigo-400"}`}>
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="font-bold text-gray-900">{t.name}</span>
+                        <span className="text-xs bg-indigo-100 text-indigo-700 px-1.5 py-0.5 rounded-full">Custom</span>
+                      </div>
+                      {t.board && <div className="text-xs text-indigo-600 mb-1">{t.board}</div>}
+                      <div className="text-sm text-gray-500">{t.duration} min · {t.totalMarks} marks</div>
+                      <div className="mt-2 space-y-0.5">
+                        {t.distribution.map((d) => (
+                          <div key={d.type} className="text-xs text-gray-400">{d.count}× {d.type} ({d.marksEach}M each)</div>
+                        ))}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+                <div className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">Built-in Templates</div>
+              </>
+            )}
+
+            <div className="grid sm:grid-cols-2 gap-3">
               {TEMPLATES.map((t) => (
-                <button key={t.id} onClick={() => { setSelectedTemplate(t); setForm({ ...form, duration: t.duration, totalMarks: t.totalMarks }); }}
+                <button key={t.id}
+                  onClick={() => { setSelectedTemplate(t); setForm({ ...form, duration: t.duration, totalMarks: t.totalMarks }); }}
                   className={`text-left p-4 rounded-xl border-2 transition ${selectedTemplate.id === t.id ? "border-indigo-600 bg-indigo-50" : "border-gray-200 hover:border-indigo-300"}`}>
                   <div className="font-bold text-gray-900">{t.name}</div>
                   <div className="text-sm text-gray-500 mt-1">{t.duration} min · {t.totalMarks} marks</div>
-                  <div className="mt-2 space-y-1">
+                  <div className="mt-2 space-y-0.5">
                     {t.distribution.map((d) => (
                       <div key={d.type} className="text-xs text-gray-400">{d.count}× {d.type} ({d.marksEach} mark{d.marksEach > 1 ? "s" : ""} each)</div>
                     ))}
@@ -129,9 +166,16 @@ export default function CreatePaperPage() {
                 </button>
               ))}
             </div>
-            <div className="mt-4 bg-indigo-50 rounded-xl p-4 flex items-center gap-3">
-              <Wand2 className="w-5 h-5 text-indigo-600 shrink-0" />
-              <p className="text-sm text-indigo-700">Templates auto-configure mark distribution. You can manually adjust questions in the next step.</p>
+
+            <div className="mt-4 flex items-center gap-3 justify-between flex-wrap">
+              <div className="bg-indigo-50 rounded-xl p-3 flex items-center gap-3 flex-1">
+                <Wand2 className="w-5 h-5 text-indigo-600 shrink-0" />
+                <p className="text-sm text-indigo-700">Templates auto-configure mark distribution. You can adjust questions in the next step.</p>
+              </div>
+              <Link href="/dashboard/templates" target="_blank"
+                className="flex items-center gap-2 border border-indigo-300 text-indigo-600 text-sm font-medium px-4 py-2.5 rounded-xl hover:bg-indigo-50 transition whitespace-nowrap">
+                <Plus className="w-4 h-4" /> Create Custom Template
+              </Link>
             </div>
           </div>
         )}

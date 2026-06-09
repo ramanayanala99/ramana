@@ -1,7 +1,7 @@
 "use client";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import { Question, QuestionPaper, SAMPLE_QUESTIONS } from "./data";
+import { Question, QuestionPaper, PaperTemplate, SAMPLE_QUESTIONS } from "./data";
 
 interface User {
   id: string;
@@ -21,6 +21,7 @@ interface AppState {
   isAuthenticated: boolean;
   questions: Question[];
   papers: QuestionPaper[];
+  customTemplates: PaperTemplate[];
   teachers: Array<{ id: string; name: string; email: string; role: string; addedAt: string }>;
 
   login: (user: User) => void;
@@ -32,6 +33,9 @@ interface AppState {
   updateQuestion: (id: string, updates: Partial<Question>) => void;
   addTeacher: (t: { id: string; name: string; email: string; role: string; addedAt: string }) => void;
   removeTeacher: (id: string) => void;
+  addCustomTemplate: (t: PaperTemplate) => void;
+  updateCustomTemplate: (id: string, updates: Partial<PaperTemplate>) => void;
+  deleteCustomTemplate: (id: string) => void;
 }
 
 export const useAppStore = create<AppState>()(
@@ -40,6 +44,7 @@ export const useAppStore = create<AppState>()(
       user: null,
       isAuthenticated: false,
       questions: SAMPLE_QUESTIONS,
+      customTemplates: [],
       papers: [
         {
           id: "p1", title: "CBSE Class 10 Math Unit Test",
@@ -77,6 +82,13 @@ export const useAppStore = create<AppState>()(
       })),
       addTeacher: (t) => set((s) => ({ teachers: [...s.teachers, t] })),
       removeTeacher: (id) => set((s) => ({ teachers: s.teachers.filter((t) => t.id !== id) })),
+      addCustomTemplate: (t) => set((s) => ({ customTemplates: [...s.customTemplates, t] })),
+      updateCustomTemplate: (id, updates) => set((s) => ({
+        customTemplates: s.customTemplates.map((t) => t.id === id ? { ...t, ...updates } : t),
+      })),
+      deleteCustomTemplate: (id) => set((s) => ({
+        customTemplates: s.customTemplates.filter((t) => t.id !== id),
+      })),
     }),
     { name: "at-tool-store" }
   )
