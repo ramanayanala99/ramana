@@ -148,23 +148,52 @@ export default function PapersPage() {
                   <span>Max Marks: {preview.totalMarks}</span>
                 </div>
               </div>
-              <div className="space-y-4">
-                {preview.questions.map((q, i) => (
-                  <div key={q.id} className="flex gap-3">
-                    <span className="font-bold text-gray-900 shrink-0">Q{i + 1}.</span>
-                    <div>
-                      <p className="text-gray-800">{q.text}</p>
-                      {q.options && (
-                        <div className="mt-2 space-y-1">
-                          {q.options.map((opt, j) => (
-                            <div key={j} className="text-sm text-gray-600">{String.fromCharCode(65 + j)}. {opt}</div>
-                          ))}
-                        </div>
+              <div className="space-y-1">
+                {/* Group questions by type to print section headers with choice instruction */}
+                {(() => {
+                  const groups: Record<string, typeof preview.questions> = {};
+                  preview.questions.forEach((q) => {
+                    if (!groups[q.type]) groups[q.type] = [];
+                    groups[q.type].push(q);
+                  });
+                  let qNum = 1;
+                  return Object.entries(groups).map(([type, qs]) => (
+                    <div key={type} className="mb-6">
+                      <div className="flex items-center justify-between border-b border-gray-200 pb-2 mb-3">
+                        <h4 className="font-bold text-gray-800 text-sm uppercase tracking-wide">
+                          Section — {type}
+                        </h4>
+                        <span className="text-xs text-gray-500">{qs[0].marks} mark{qs[0].marks > 1 ? "s" : ""} each</span>
+                      </div>
+                      {qs.length > 1 && (
+                        <p className="text-xs italic text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-1.5 mb-3">
+                          ✦ Attempt any {Math.ceil(qs.length * 0.6)} out of {qs.length} questions.
+                        </p>
                       )}
-                      <div className="text-xs text-gray-400 mt-1">[{q.marks} mark{q.marks > 1 ? "s" : ""}]</div>
+                      <div className="space-y-4">
+                        {qs.map((q) => {
+                          const n = qNum++;
+                          return (
+                            <div key={q.id} className="flex gap-3">
+                              <span className="font-bold text-gray-900 shrink-0">Q{n}.</span>
+                              <div>
+                                <p className="text-gray-800">{q.text}</p>
+                                {q.options && (
+                                  <div className="mt-2 space-y-1">
+                                    {q.options.map((opt, j) => (
+                                      <div key={j} className="text-sm text-gray-600">{String.fromCharCode(65 + j)}. {opt}</div>
+                                    ))}
+                                  </div>
+                                )}
+                                <div className="text-xs text-gray-400 mt-1">[{q.marks} mark{q.marks > 1 ? "s" : ""}]</div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  ));
+                })()}
               </div>
             </div>
           </div>

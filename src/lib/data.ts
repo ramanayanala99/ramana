@@ -114,7 +114,8 @@ export const SAMPLE_QUESTIONS: Question[] = [
 
 export interface TemplateRow {
   type: string;
-  count: number;
+  count: number;       // total questions given (printed on paper)
+  attempt?: number;    // how many students must attempt (if different from count)
   marksEach: number;
 }
 

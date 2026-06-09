@@ -6,8 +6,16 @@ import { Plus, Edit, Trash2, Copy, BookOpen, Clock, Target, ChevronDown, Chevron
 
 const EMPTY_ROW: TemplateRow = { type: "MCQ", count: 5, marksEach: 1 };
 
+// Marks calculated on questions students must ATTEMPT, not total given
 function calcTotal(rows: TemplateRow[]) {
-  return rows.reduce((s, r) => s + r.count * r.marksEach, 0);
+  return rows.reduce((s, r) => s + (r.attempt ?? r.count) * r.marksEach, 0);
+}
+
+function choiceLabel(row: TemplateRow) {
+  if (row.attempt && row.attempt < row.count) {
+    return `Attempt any ${row.attempt} out of ${row.count}`;
+  }
+  return null;
 }
 
 function TemplateEditor({
@@ -82,51 +90,77 @@ function TemplateEditor({
 
       {/* Question rows */}
       <div className="mb-4">
-        <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center justify-between mb-1">
           <label className="text-sm font-semibold text-gray-700">Question Distribution</label>
           <div className="text-xs text-gray-400">Total: <span className="font-bold text-indigo-600">{totalMarks} marks</span></div>
         </div>
+        <p className="text-xs text-gray-400 mb-3">
+          Set <strong>Questions Given</strong> (printed on paper) and <strong>Attempt</strong> (how many students must answer).
+          Leave Attempt blank or equal to Given for no choice.
+        </p>
 
         <div className="space-y-2">
           <div className="grid grid-cols-12 gap-2 text-xs font-medium text-gray-400 px-1">
-            <span className="col-span-5">Question Type</span>
-            <span className="col-span-3 text-center">No. of Qs</span>
+            <span className="col-span-4">Question Type</span>
+            <span className="col-span-2 text-center">Qs Given</span>
+            <span className="col-span-2 text-center">Attempt</span>
             <span className="col-span-3 text-center">Marks Each</span>
             <span className="col-span-1" />
           </div>
 
-          {rows.map((row, i) => (
-            <div key={i} className="grid grid-cols-12 gap-2 items-center bg-gray-50 rounded-xl p-2">
-              <div className="col-span-5">
-                <select
-                  value={row.type} onChange={(e) => updateRow(i, "type", e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
-                >
-                  {QUESTION_TYPES.map((t) => <option key={t}>{t}</option>)}
-                </select>
+          {rows.map((row, i) => {
+            const hasChoice = row.attempt && row.attempt < row.count;
+            return (
+              <div key={i} className={`rounded-xl p-2 ${hasChoice ? "bg-amber-50 border border-amber-200" : "bg-gray-50"}`}>
+                <div className="grid grid-cols-12 gap-2 items-center">
+                  <div className="col-span-4">
+                    <select
+                      value={row.type} onChange={(e) => updateRow(i, "type", e.target.value)}
+                      className="w-full px-2 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
+                    >
+                      {QUESTION_TYPES.map((t) => <option key={t}>{t}</option>)}
+                    </select>
+                  </div>
+                  <div className="col-span-2">
+                    <input
+                      type="number" min="1" max="50" value={row.count}
+                      onChange={(e) => updateRow(i, "count", e.target.value)}
+                      className="w-full px-2 py-2 border border-gray-200 rounded-lg text-sm text-center focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
+                    />
+                  </div>
+                  <div className="col-span-2">
+                    <input
+                      type="number" min="1" max={row.count} placeholder="—"
+                      value={row.attempt ?? ""}
+                      onChange={(e) => {
+                        const val = e.target.value === "" ? undefined : Number(e.target.value);
+                        setRows((prev) => prev.map((r, idx) => idx === i ? { ...r, attempt: val } : r));
+                      }}
+                      className={`w-full px-2 py-2 border rounded-lg text-sm text-center focus:outline-none focus:ring-2 focus:ring-amber-400 bg-white ${hasChoice ? "border-amber-400 text-amber-700 font-semibold" : "border-gray-200"}`}
+                    />
+                  </div>
+                  <div className="col-span-3">
+                    <input
+                      type="number" min="1" max="20" value={row.marksEach}
+                      onChange={(e) => updateRow(i, "marksEach", e.target.value)}
+                      className="w-full px-2 py-2 border border-gray-200 rounded-lg text-sm text-center focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
+                    />
+                  </div>
+                  <div className="col-span-1 flex justify-center">
+                    <button onClick={() => removeRow(i)} disabled={rows.length === 1}
+                      className="w-7 h-7 rounded-lg hover:bg-red-100 flex items-center justify-center disabled:opacity-30 transition">
+                      <Trash2 className="w-3.5 h-3.5 text-red-400" />
+                    </button>
+                  </div>
+                </div>
+                {hasChoice && (
+                  <div className="mt-1 ml-1 text-xs text-amber-700 font-medium flex items-center gap-1">
+                    ✦ Attempt any {row.attempt} out of {row.count} · {(row.attempt ?? 0) * row.marksEach} marks
+                  </div>
+                )}
               </div>
-              <div className="col-span-3">
-                <input
-                  type="number" min="1" max="50" value={row.count}
-                  onChange={(e) => updateRow(i, "count", e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-center focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
-                />
-              </div>
-              <div className="col-span-3">
-                <input
-                  type="number" min="1" max="20" value={row.marksEach}
-                  onChange={(e) => updateRow(i, "marksEach", e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-center focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
-                />
-              </div>
-              <div className="col-span-1 flex justify-center">
-                <button onClick={() => removeRow(i)} disabled={rows.length === 1}
-                  className="w-7 h-7 rounded-lg hover:bg-red-100 flex items-center justify-center disabled:opacity-30 transition">
-                  <Trash2 className="w-3.5 h-3.5 text-red-400" />
-                </button>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
 
         <button onClick={addRow}
@@ -138,14 +172,19 @@ function TemplateEditor({
       {/* Summary */}
       <div className="bg-indigo-50 rounded-xl p-3 mb-5 flex flex-wrap gap-4 text-sm">
         <span className="flex items-center gap-1.5 text-indigo-700">
-          <Target className="w-4 h-4" /><strong>{totalMarks}</strong> total marks
+          <Target className="w-4 h-4" /><strong>{totalMarks}</strong> marks
         </span>
         <span className="flex items-center gap-1.5 text-indigo-700">
-          <Clock className="w-4 h-4" /><strong>{duration}</strong> minutes
+          <Clock className="w-4 h-4" /><strong>{duration}</strong> min
         </span>
         <span className="flex items-center gap-1.5 text-indigo-700">
-          <BookOpen className="w-4 h-4" /><strong>{rows.reduce((s, r) => s + r.count, 0)}</strong> questions
+          <BookOpen className="w-4 h-4" /><strong>{rows.reduce((s, r) => s + r.count, 0)}</strong> questions printed
         </span>
+        {rows.some((r) => r.attempt && r.attempt < r.count) && (
+          <span className="flex items-center gap-1.5 text-amber-700 font-semibold">
+            ✦ Has internal choice
+          </span>
+        )}
       </div>
 
       <div className="flex gap-3">
@@ -175,23 +214,27 @@ function TemplateCard({
 }) {
   const [expanded, setExpanded] = useState(false);
   const totalQs = template.distribution.reduce((s, r) => s + r.count, 0);
+  const hasChoice = template.distribution.some((r) => r.attempt && r.attempt < r.count);
 
   return (
     <div className={`bg-white rounded-2xl border-2 ${template.isCustom ? "border-indigo-200" : "border-gray-100"} shadow-sm`}>
       <div className="p-5">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <div className="flex items-center gap-2 mb-1">
+            <div className="flex items-center gap-2 mb-1 flex-wrap">
               <h3 className="font-bold text-gray-900">{template.name}</h3>
               {template.isCustom && (
                 <span className="text-xs bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full font-medium">Custom</span>
+              )}
+              {hasChoice && (
+                <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-medium">Has Choice</span>
               )}
             </div>
             {template.board && <div className="text-xs text-indigo-600 mb-2">{template.board}</div>}
             <div className="flex gap-3 text-sm text-gray-500">
               <span className="flex items-center gap-1"><Clock className="w-3.5 h-3.5" />{template.duration} min</span>
               <span className="flex items-center gap-1"><Target className="w-3.5 h-3.5" />{template.totalMarks} marks</span>
-              <span className="flex items-center gap-1"><BookOpen className="w-3.5 h-3.5" />{totalQs} questions</span>
+              <span className="flex items-center gap-1"><BookOpen className="w-3.5 h-3.5" />{totalQs} printed</span>
             </div>
           </div>
           <div className="flex gap-1.5 shrink-0">
@@ -221,19 +264,32 @@ function TemplateCard({
         </button>
 
         {expanded && (
-          <div className="mt-3 space-y-1.5">
-            {template.distribution.map((row, i) => (
-              <div key={i} className="flex items-center gap-3 text-sm">
-                <span className="w-36 text-gray-600 truncate">{row.type}</span>
-                <div className="flex-1 bg-gray-100 rounded-full h-1.5">
-                  <div className="bg-indigo-400 h-1.5 rounded-full"
-                    style={{ width: `${Math.min(100, (row.count * row.marksEach / template.totalMarks) * 100)}%` }} />
+          <div className="mt-3 space-y-2">
+            {template.distribution.map((row, i) => {
+              const attempt = row.attempt && row.attempt < row.count ? row.attempt : row.count;
+              const rowMarks = attempt * row.marksEach;
+              const pct = Math.min(100, (rowMarks / template.totalMarks) * 100);
+              const isChoice = row.attempt && row.attempt < row.count;
+              return (
+                <div key={i}>
+                  <div className="flex items-center gap-3 text-sm">
+                    <span className="w-32 text-gray-600 truncate shrink-0">{row.type}</span>
+                    <div className="flex-1 bg-gray-100 rounded-full h-1.5">
+                      <div className={`${isChoice ? "bg-amber-400" : "bg-indigo-400"} h-1.5 rounded-full`}
+                        style={{ width: `${pct}%` }} />
+                    </div>
+                    <span className="text-xs text-gray-400 whitespace-nowrap">
+                      {isChoice ? `${attempt}/${row.count}` : `${row.count}×`} · {row.marksEach}M = {rowMarks}M
+                    </span>
+                  </div>
+                  {isChoice && (
+                    <div className="ml-32 text-xs text-amber-600 mt-0.5 pl-3">
+                      ✦ Attempt any {attempt} out of {row.count}
+                    </div>
+                  )}
                 </div>
-                <span className="text-xs text-gray-400 whitespace-nowrap">
-                  {row.count}× · {row.marksEach}M = {row.count * row.marksEach}M
-                </span>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
