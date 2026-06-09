@@ -1,5 +1,5 @@
 "use client";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import { useAppStore } from "@/lib/store";
@@ -20,10 +20,21 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const router = useRouter();
   const pathname = usePathname();
   const { isAuthenticated, user, logout } = useAppStore();
+  const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
-    if (!isAuthenticated) router.push("/login");
-  }, [isAuthenticated, router]);
+    setHydrated(true);
+  }, []);
+
+  useEffect(() => {
+    if (hydrated && !isAuthenticated) router.push("/login");
+  }, [hydrated, isAuthenticated, router]);
+
+  if (!hydrated) return (
+    <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="text-indigo-600 font-semibold animate-pulse">Loading AT Tool...</div>
+    </div>
+  );
 
   if (!isAuthenticated) return null;
 
