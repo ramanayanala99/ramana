@@ -24,48 +24,90 @@ interface ChatMsg {
   questions?: Question[];
 }
 
-// Simulated AI chat responses
-function aiReply(userMsg: string, currentQs: Question[], form: { subject: string; board: string; class: string; examType: string }, topics: string[]): { text: string; questions?: Question[] } {
+function aiReply(
+  userMsg: string,
+  currentQs: Question[],
+  form: { subject: string; board: string; class: string; examType: string },
+  topics: string[]
+): { text: string; questions?: Question[] } {
   const msg = userMsg.toLowerCase();
+
+  // Show questions list
+  if (msg.includes("show") || msg.includes("list") || msg.includes("what") || msg.includes("see")) {
+    const byType = currentQs.reduce((acc, q) => { acc[q.type] = (acc[q.type] || 0) + 1; return acc; }, {} as Record<string, number>);
+    const summary = Object.entries(byType).map(([t, c]) => `${c} ${t}`).join(", ");
+    return { text: `Here are your **${currentQs.length} questions** (${summary}) — they're shown in the panel on the right. You can edit ✏️ or retry 🔄 any question individually, or ask me to change them.` };
+  }
 
   // Add more questions
   const addMatch = msg.match(/add\s+(\d+)\s*(more)?\s*(mcq|short|long|fill|true|match)?/i);
   if (addMatch) {
     const count = parseInt(addMatch[1]) || 5;
-    const typeHint = addMatch[3] || "";
-    const type = typeHint.toLowerCase().includes("mcq") ? "MCQ"
-      : typeHint.toLowerCase().includes("short") ? "Short Answer"
-      : typeHint.toLowerCase().includes("long") ? "Long Answer"
-      : typeHint.toLowerCase().includes("fill") ? "Fill in the Blanks"
-      : typeHint.toLowerCase().includes("true") ? "True/False"
+    const typeHint = (addMatch[3] || "").toLowerCase();
+    const type = typeHint.includes("mcq") ? "MCQ"
+      : typeHint.includes("short") ? "Short Answer"
+      : typeHint.includes("long") ? "Long Answer"
+      : typeHint.includes("fill") ? "Fill in the Blanks"
+      : typeHint.includes("true") ? "True/False"
       : "Short Answer";
     const dist = [{ type, count, marksEach: type === "MCQ" ? 1 : type === "Long Answer" ? 5 : 2 }];
     const newQs = generateQuestionsFromTopics(topics, form.subject, form.class, form.board, dist) as Question[];
     return {
-      text: `Added ${newQs.length} ${type} question${newQs.length > 1 ? "s" : ""}. Total is now ${currentQs.length + newQs.length} questions. You can keep refining!`,
+      text: `✅ Added **${newQs.length} ${type}** question${newQs.length > 1 ? "s" : ""}. Total is now **${currentQs.length + newQs.length} questions**. Keep refining or continue to Review!`,
       questions: [...currentQs, ...newQs],
     };
   }
 
-  // Remove a question by number
+  // Remove question by number
   const removeMatch = msg.match(/remove\s+(?:q(?:uestion)?\s*)?(\d+)/i);
   if (removeMatch) {
     const idx = parseInt(removeMatch[1]) - 1;
     if (idx >= 0 && idx < currentQs.length) {
+      const removed = currentQs[idx];
       const updated = currentQs.filter((_, i) => i !== idx);
-      return { text: `Removed question ${idx + 1}. ${updated.length} questions remaining.`, questions: updated };
+      return { text: `🗑️ Removed Q${idx + 1}: "${removed.text.slice(0, 60)}…". **${updated.length} questions** remaining.`, questions: updated };
     }
-    return { text: `Question ${removeMatch[1]} not found. There are ${currentQs.length} questions total.` };
+    return { text: `Q${removeMatch[1]} not found. You have ${currentQs.length} questions (Q1–Q${currentQs.length}).` };
+  }
+
+  // Retry / try with other for a specific question
+  const retryMatch = msg.match(/(?:retry|try\s+(?:again|other|another|different)|replace|rephrase|change)\s+(?:q(?:uestion)?\s*)?(\d+)/i);
+  if (retryMatch) {
+    const idx = parseInt(retryMatch[1]) - 1;
+    if (idx >= 0 && idx < currentQs.length) {
+      const old = currentQs[idx];
+      const newQ = (generateQuestionsFromTopics([old.topic], form.subject, form.class, form.board, [{ type: old.type, count: 1, marksEach: old.marks }]) as Question[])[0];
+      const updated = currentQs.map((q, i) => i === idx ? { ...newQ, id: "r_" + Date.now() } : q);
+      return { text: `🔄 Replaced Q${idx + 1} with a new question on the same topic (${old.topic}). Check the panel — if you still don't like it, say "retry Q${idx + 1}" again!`, questions: updated };
+    }
+    return { text: `Q${retryMatch[1]} not found.` };
+  }
+
+  // "Try with other concept" / not satisfied
+  if (msg.includes("not satisfied") || msg.includes("try with other") || msg.includes("try another") || msg.includes("different concept") || msg.includes("try other")) {
+    const dist = currentQs.reduce((acc, q) => {
+      const found = acc.find(r => r.type === q.type);
+      if (found) found.count++;
+      else acc.push({ type: q.type, count: 1, marksEach: q.marks });
+      return acc;
+    }, [] as { type: string; count: number; marksEach: number }[]);
+    const shuffledTopics = [...topics].sort(() => Math.random() - 0.5);
+    const newQs = generateQuestionsFromTopics(shuffledTopics, form.subject, form.class, form.board, dist) as Question[];
+    return { text: `🔁 Generated a **completely fresh set** using the same syllabus but different concepts and phrasing. **${newQs.length} new questions** ready — review them in the panel!`, questions: newQs };
   }
 
   // Make harder / easier
-  if (msg.includes("hard") || msg.includes("difficult")) {
+  if (msg.includes("hard") || msg.includes("difficult") || msg.includes("tough")) {
     const updated = currentQs.map(q => ({ ...q, difficulty: "Hard" as const }));
-    return { text: "Set all questions to Hard difficulty. You can also ask me to make specific questions harder.", questions: updated };
+    return { text: "💪 Set all questions to **Hard** difficulty. Or say \"retry Q3 hard\" to change just one.", questions: updated };
   }
-  if (msg.includes("easy") || msg.includes("simpl")) {
+  if (msg.includes("easy") || msg.includes("simpl") || msg.includes("basic")) {
     const updated = currentQs.map(q => ({ ...q, difficulty: "Easy" as const }));
-    return { text: "Set all questions to Easy difficulty. Suitable for younger classes or basic tests.", questions: updated };
+    return { text: "✅ Set all questions to **Easy** difficulty. Good for practice tests.", questions: updated };
+  }
+  if (msg.includes("medium") || msg.includes("moderate")) {
+    const updated = currentQs.map(q => ({ ...q, difficulty: "Medium" as const }));
+    return { text: "✅ Set all questions to **Medium** difficulty.", questions: updated };
   }
 
   // Change marks
@@ -75,52 +117,46 @@ function aiReply(userMsg: string, currentQs: Question[], form: { subject: string
     const typeHint = msg.includes("mcq") ? "MCQ" : msg.includes("short") ? "Short Answer" : msg.includes("long") ? "Long Answer" : null;
     const updated = currentQs.map(q => (!typeHint || q.type === typeHint) ? { ...q, marks } : q);
     return {
-      text: `Updated marks to ${marks} for ${typeHint || "all"} questions. New total: ${updated.reduce((s, q) => s + q.marks, 0)} marks.`,
+      text: `✅ Changed marks to **${marks}** for ${typeHint || "all"} questions. New total: **${updated.reduce((s, q) => s + q.marks, 0)} marks**.`,
       questions: updated,
     };
   }
 
   // Regenerate all
-  if (msg.includes("regenerate") || msg.includes("redo") || msg.includes("start over") || msg.includes("new set")) {
-    const dist = [
-      { type: "MCQ", count: 10, marksEach: 1 },
-      { type: "Short Answer", count: 5, marksEach: 2 },
-      { type: "Long Answer", count: 3, marksEach: 5 },
-    ];
+  if (msg.includes("regenerate") || msg.includes("redo") || msg.includes("start over") || msg.includes("new set") || msg.includes("fresh")) {
+    const dist = currentQs.reduce((acc, q) => {
+      const found = acc.find(r => r.type === q.type);
+      if (found) found.count++;
+      else acc.push({ type: q.type, count: 1, marksEach: q.marks });
+      return acc;
+    }, [] as { type: string; count: number; marksEach: number }[]);
     const newQs = generateQuestionsFromTopics(topics, form.subject, form.class, form.board, dist) as Question[];
-    return { text: `Regenerated a fresh set of ${newQs.length} questions. Let me know what changes you'd like!`, questions: newQs };
+    return { text: `🔄 Regenerated all **${newQs.length} questions** fresh. Let me know what to change!`, questions: newQs };
   }
 
-  // Topic-specific questions
-  const topicMatch = msg.match(/(?:add|generate|create|give)\s+(?:\d+\s+)?(?:questions?\s+)?(?:on|about|from)\s+(.+)/i);
+  // Topic-specific
+  const topicMatch = msg.match(/(?:add|generate|create|give|include)\s+(?:\d+\s+)?(?:questions?\s+)?(?:on|about|from|related to)\s+(.+)/i);
   if (topicMatch) {
-    const topic = topicMatch[1].trim();
-    const dist = [{ type: "Short Answer", count: 3, marksEach: 2 }];
+    const topic = topicMatch[1].trim().replace(/[?.!]$/, "");
+    const countMatch = msg.match(/(\d+)\s+questions?/i);
+    const count = countMatch ? parseInt(countMatch[1]) : 2;
+    const dist = [{ type: "Short Answer", count, marksEach: 2 }];
     const newQs = (generateQuestionsFromTopics([topic], form.subject, form.class, form.board, dist) as Question[]).map(q => ({ ...q, topic }));
     return {
-      text: `Added 3 questions on "${topic}". Total: ${currentQs.length + newQs.length} questions.`,
+      text: `✅ Added **${newQs.length} question${newQs.length > 1 ? "s" : ""}** on "${topic}". Total: **${currentQs.length + newQs.length} questions**.`,
       questions: [...currentQs, ...newQs],
     };
   }
 
-  // Show count / summary
-  if (msg.includes("how many") || msg.includes("summary") || msg.includes("total")) {
+  // Summary
+  if (msg.includes("how many") || msg.includes("summary") || msg.includes("total") || msg.includes("count")) {
     const byType = currentQs.reduce((acc, q) => { acc[q.type] = (acc[q.type] || 0) + 1; return acc; }, {} as Record<string, number>);
-    const summary = Object.entries(byType).map(([t, c]) => `${c} ${t}`).join(", ");
-    return { text: `Current paper has ${currentQs.length} questions: ${summary}. Total marks: ${currentQs.reduce((s, q) => s + q.marks, 0)}.` };
+    const lines = Object.entries(byType).map(([t, c]) => `• ${c}× ${t}`).join("\n");
+    return { text: `📋 **Paper Summary**\n${lines}\n\nTotal: ${currentQs.length} questions · ${currentQs.reduce((s, q) => s + q.marks, 0)} marks · ${form.examType}` };
   }
 
-  // Default
-  const suggestions = [
-    "Try: \"Add 5 more MCQ questions\"",
-    "Try: \"Make all questions Hard\"",
-    "Try: \"Add 3 questions on Pythagoras theorem\"",
-    "Try: \"Remove question 2\"",
-    "Try: \"Change MCQ marks to 2\"",
-    "Try: \"Regenerate all questions\"",
-  ];
   return {
-    text: `I can help you refine the paper! Here are some things you can ask:\n\n${suggestions.join("\n")}`,
+    text: `I can help! Try:\n• "Add 5 MCQ questions"\n• "Add questions on Newton's laws"\n• "Retry Q3" — replace one question\n• "Try with other concept" — fresh set same syllabus\n• "Make all questions Hard"\n• "Change Long Answer marks to 6"\n• "Remove question 2"\n• "Regenerate all"`,
   };
 }
 
@@ -688,83 +724,171 @@ export default function CreatePaperPage() {
 
         {/* ── STEP 4: AI Chat ── */}
         {step === 3 && (
-          <div className="flex flex-col h-[520px]">
-            <div className="flex items-center gap-3 mb-3 pb-3 border-b border-gray-100">
-              <div className="w-9 h-9 bg-indigo-600 rounded-xl flex items-center justify-center">
-                <Sparkles className="w-5 h-5 text-white" />
-              </div>
-              <div>
-                <h2 className="font-bold text-gray-900 text-sm">AI Paper Assistant</h2>
-                <p className="text-xs text-gray-400">Chat to refine your question paper — add questions, change marks, adjust difficulty</p>
-              </div>
-              <div className="ml-auto text-xs text-gray-400 bg-gray-50 px-3 py-1.5 rounded-lg">
-                {generatedQuestions.length} questions · {generatedQuestions.reduce((s, q) => s + q.marks, 0)}M
-              </div>
-            </div>
+          <div className="flex gap-4 h-[580px]">
 
-            {/* Chat messages */}
-            <div className="flex-1 overflow-y-auto space-y-3 pr-1 mb-3">
-              {chatLoading && chatMsgs.length === 0 && (
-                <div className="flex items-center gap-2 text-indigo-600 text-sm animate-pulse p-3">
-                  <Sparkles className="w-4 h-4" /> Generating your paper…
+            {/* LEFT — Chat panel */}
+            <div className="flex flex-col w-[45%] shrink-0 border-r border-gray-100 pr-4">
+              <div className="flex items-center gap-2 mb-3 pb-2 border-b border-gray-100">
+                <div className="w-7 h-7 bg-indigo-600 rounded-lg flex items-center justify-center">
+                  <Sparkles className="w-4 h-4 text-white" />
                 </div>
-              )}
-              {chatMsgs.map((msg, i) => (
-                <div key={i} className={`flex gap-2.5 ${msg.role === "user" ? "flex-row-reverse" : ""}`}>
-                  <div className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 ${msg.role === "assistant" ? "bg-indigo-100" : "bg-gray-200"}`}>
-                    {msg.role === "assistant" ? <Bot className="w-4 h-4 text-indigo-600" /> : <UserIcon className="w-4 h-4 text-gray-600" />}
-                  </div>
-                  <div className={`max-w-[80%] rounded-2xl px-4 py-2.5 text-sm ${msg.role === "assistant" ? "bg-indigo-50 text-gray-800" : "bg-gray-900 text-white"}`}>
-                    {msg.text.split("\n").map((line, j) => (
-                      <p key={j} className={j > 0 ? "mt-1" : ""}>{line.replace(/\*\*(.*?)\*\*/g, "$1")}</p>
-                    ))}
-                    {msg.questions && (
-                      <div className="mt-2 text-xs text-indigo-600 font-medium">
-                        ✓ {msg.questions.length} questions · {msg.questions.reduce((s, q) => s + q.marks, 0)} marks
-                      </div>
-                    )}
-                  </div>
+                <div>
+                  <div className="font-bold text-gray-900 text-xs">AI Paper Assistant</div>
+                  <div className="text-xs text-gray-400">Chat to refine your paper</div>
                 </div>
-              ))}
-              {chatLoading && chatMsgs.length > 0 && (
-                <div className="flex gap-2.5">
-                  <div className="w-7 h-7 rounded-full bg-indigo-100 flex items-center justify-center">
-                    <Bot className="w-4 h-4 text-indigo-600" />
+                <div className="ml-auto text-xs bg-indigo-50 text-indigo-600 font-medium px-2 py-1 rounded-lg">
+                  {generatedQuestions.length}Q · {generatedQuestions.reduce((s, q) => s + q.marks, 0)}M
+                </div>
+              </div>
+
+              <div className="flex-1 overflow-y-auto space-y-3 mb-2">
+                {chatLoading && chatMsgs.length === 0 && (
+                  <div className="flex items-center gap-2 text-indigo-600 text-xs animate-pulse p-2">
+                    <Sparkles className="w-3 h-3" /> Generating your paper…
                   </div>
-                  <div className="bg-indigo-50 rounded-2xl px-4 py-2.5">
-                    <div className="flex gap-1">
-                      <span className="w-2 h-2 bg-indigo-400 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
-                      <span className="w-2 h-2 bg-indigo-400 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
-                      <span className="w-2 h-2 bg-indigo-400 rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
+                )}
+                {chatMsgs.map((msg, i) => (
+                  <div key={i} className={`flex gap-2 ${msg.role === "user" ? "flex-row-reverse" : ""}`}>
+                    <div className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 ${msg.role === "assistant" ? "bg-indigo-100" : "bg-gray-200"}`}>
+                      {msg.role === "assistant" ? <Bot className="w-3.5 h-3.5 text-indigo-600" /> : <UserIcon className="w-3.5 h-3.5 text-gray-600" />}
+                    </div>
+                    <div className={`max-w-[85%] rounded-xl px-3 py-2 text-xs ${msg.role === "assistant" ? "bg-indigo-50 text-gray-800" : "bg-gray-900 text-white"}`}>
+                      {msg.text.split("\n").map((line, j) => (
+                        <p key={j} className={j > 0 ? "mt-0.5" : ""}>
+                          {line.replace(/\*\*(.*?)\*\*/g, (_, m) => m)}
+                        </p>
+                      ))}
+                      {msg.questions && (
+                        <div className="mt-1.5 text-xs text-indigo-600 font-semibold">
+                          ✓ {msg.questions.length} questions · {msg.questions.reduce((s, q) => s + q.marks, 0)} marks
+                        </div>
+                      )}
                     </div>
                   </div>
+                ))}
+                {chatLoading && chatMsgs.length > 0 && (
+                  <div className="flex gap-2">
+                    <div className="w-6 h-6 rounded-full bg-indigo-100 flex items-center justify-center">
+                      <Bot className="w-3.5 h-3.5 text-indigo-600" />
+                    </div>
+                    <div className="bg-indigo-50 rounded-xl px-3 py-2.5 flex gap-1 items-center">
+                      <span className="w-1.5 h-1.5 bg-indigo-400 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
+                      <span className="w-1.5 h-1.5 bg-indigo-400 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
+                      <span className="w-1.5 h-1.5 bg-indigo-400 rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
+                    </div>
+                  </div>
+                )}
+                <div ref={chatEndRef} />
+              </div>
+
+              {/* Chips */}
+              <div className="flex gap-1.5 flex-wrap mb-2">
+                {["Add 5 MCQ", "Try with other concept", "Make harder", "Show summary", "Regenerate all"].map(s => (
+                  <button key={s} onClick={() => setChatInput(s)}
+                    className="text-xs bg-gray-100 hover:bg-indigo-100 hover:text-indigo-700 text-gray-500 px-2.5 py-1 rounded-full transition">
+                    {s}
+                  </button>
+                ))}
+              </div>
+
+              <div className="flex gap-1.5">
+                <input value={chatInput} onChange={e => setChatInput(e.target.value)}
+                  onKeyDown={e => e.key === "Enter" && !e.shiftKey && sendChat()}
+                  placeholder='e.g. "Retry Q3" or "Add questions on Chapter 5"'
+                  className="flex-1 px-3 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 text-xs" />
+                <button onClick={sendChat} disabled={chatLoading || !chatInput.trim()}
+                  className="w-9 h-9 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 text-white rounded-xl flex items-center justify-center transition shrink-0">
+                  <Send className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
+
+            {/* RIGHT — Live questions panel */}
+            <div className="flex-1 flex flex-col min-w-0">
+              <div className="flex items-center justify-between mb-2 pb-2 border-b border-gray-100">
+                <div className="text-xs font-bold text-gray-700">Generated Questions</div>
+                <div className="flex items-center gap-2 text-xs text-gray-400">
+                  <span>{generatedQuestions.length} questions</span>
+                  <span>·</span>
+                  <span>{generatedQuestions.reduce((s, q) => s + q.marks, 0)} marks</span>
+                  <button onClick={addBlankQuestion}
+                    className="ml-1 flex items-center gap-1 bg-indigo-600 text-white px-2 py-1 rounded-lg text-xs font-medium hover:bg-indigo-700 transition">
+                    <Plus className="w-3 h-3" /> Add
+                  </button>
+                </div>
+              </div>
+
+              {generatedQuestions.length === 0 && !chatLoading && (
+                <div className="flex-1 flex items-center justify-center text-gray-400 text-xs text-center">
+                  <div>
+                    <Sparkles className="w-8 h-8 mx-auto mb-2 text-gray-200" />
+                    Questions will appear here once generated
+                  </div>
                 </div>
               )}
-              <div ref={chatEndRef} />
-            </div>
 
-            {/* Suggestion chips */}
-            <div className="flex gap-2 flex-wrap mb-2">
-              {["Add 5 MCQ", "Make questions harder", "Add questions on last chapter", "Show summary", "Regenerate all"].map(s => (
-                <button key={s} onClick={() => { setChatInput(s); }}
-                  className="text-xs bg-gray-100 hover:bg-indigo-100 hover:text-indigo-700 text-gray-600 px-3 py-1.5 rounded-full transition">
-                  {s}
-                </button>
-              ))}
-            </div>
-
-            {/* Input */}
-            <div className="flex gap-2">
-              <input
-                value={chatInput}
-                onChange={e => setChatInput(e.target.value)}
-                onKeyDown={e => e.key === "Enter" && !e.shiftKey && sendChat()}
-                placeholder='Ask AI: "Add 5 MCQ on Chapter 3" or "Make all questions Medium difficulty"…'
-                className="flex-1 px-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm" />
-              <button onClick={sendChat} disabled={chatLoading || !chatInput.trim()}
-                className="w-10 h-10 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 text-white rounded-xl flex items-center justify-center transition shrink-0">
-                <Send className="w-4 h-4" />
-              </button>
+              <div className="flex-1 overflow-y-auto space-y-2 pr-1">
+                {generatedQuestions.map((q, i) => (
+                  <div key={q.id} className={`rounded-xl border p-3 text-xs group transition ${editingIdx === i ? "border-indigo-400 bg-indigo-50" : "border-gray-100 bg-gray-50 hover:border-indigo-200"}`}>
+                    {editingIdx === i ? (
+                      <div>
+                        <textarea value={editText} onChange={e => setEditText(e.target.value)} rows={3}
+                          className="w-full px-2 py-1.5 border border-indigo-300 rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 resize-none bg-white mb-2" />
+                        <div className="flex gap-1.5">
+                          <button onClick={saveEdit} className="flex items-center gap-1 bg-green-600 text-white px-2.5 py-1 rounded-lg font-medium hover:bg-green-700 transition">
+                            <Check className="w-3 h-3" /> Save
+                          </button>
+                          <button onClick={() => setEditingIdx(null)} className="text-gray-500 px-2.5 py-1 border border-gray-200 rounded-lg hover:bg-white">Cancel</button>
+                        </div>
+                      </div>
+                    ) : (
+                      <>
+                        <div className="flex items-start gap-2">
+                          <span className="font-bold text-gray-400 shrink-0 mt-0.5">Q{i + 1}.</span>
+                          <p className="flex-1 text-gray-800 leading-relaxed">{q.text}</p>
+                          {/* Action buttons */}
+                          <div className="flex gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition">
+                            <button onClick={() => startEdit(i)} title="Edit question"
+                              className="w-6 h-6 rounded bg-white border border-gray-200 hover:border-indigo-400 flex items-center justify-center transition">
+                              <Edit className="w-3 h-3 text-gray-500" />
+                            </button>
+                            <button onClick={() => {
+                              // Retry this question with same topic
+                              const old = generatedQuestions[i];
+                              const newQ = (generateQuestionsFromTopics([old.topic], form.subject, form.class, form.board, [{ type: old.type, count: 1, marksEach: old.marks }]) as Question[])[0];
+                              setGeneratedQuestions(prev => prev.map((qq, ii) => ii === i ? { ...newQ, id: "r_" + Date.now() } : qq));
+                              setChatMsgs(prev => [...prev, { role: "assistant", text: `🔄 Replaced Q${i + 1} with a new question on "${old.topic}". Click 🔄 again if you still want a different one!` }]);
+                            }} title="Try different question (same concept)"
+                              className="w-6 h-6 rounded bg-white border border-gray-200 hover:border-amber-400 flex items-center justify-center transition">
+                              <RefreshCw className="w-3 h-3 text-amber-500" />
+                            </button>
+                            <button onClick={() => {
+                              removeQuestion(i);
+                              setChatMsgs(prev => [...prev, { role: "assistant", text: `🗑️ Removed Q${i + 1}. ${generatedQuestions.length - 1} questions remaining.` }]);
+                            }} title="Delete question"
+                              className="w-6 h-6 rounded bg-white border border-gray-200 hover:border-red-400 flex items-center justify-center transition">
+                              <Trash2 className="w-3 h-3 text-red-400" />
+                            </button>
+                          </div>
+                        </div>
+                        {q.options && (
+                          <div className="mt-1.5 ml-5 flex flex-wrap gap-1">
+                            {q.options.map((opt, j) => (
+                              <span key={j} className="bg-white border border-gray-200 text-gray-500 px-1.5 py-0.5 rounded text-xs">{String.fromCharCode(65+j)}. {opt}</span>
+                            ))}
+                          </div>
+                        )}
+                        <div className="flex gap-1.5 mt-1.5 ml-5 flex-wrap">
+                          <span className="bg-indigo-100 text-indigo-600 px-1.5 py-0.5 rounded">{q.type}</span>
+                          <span className={`px-1.5 py-0.5 rounded ${q.difficulty === "Easy" ? "bg-green-100 text-green-600" : q.difficulty === "Medium" ? "bg-yellow-100 text-yellow-600" : "bg-red-100 text-red-600"}`}>{q.difficulty}</span>
+                          <span className="bg-gray-200 text-gray-600 px-1.5 py-0.5 rounded font-medium">{q.marks}M</span>
+                          <span className="text-gray-400">{q.topic}</span>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         )}
