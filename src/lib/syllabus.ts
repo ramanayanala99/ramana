@@ -130,29 +130,24 @@ import { searchQuestions } from "./question-bank";
 
 const FALLBACK_TEMPLATES: Record<string, Array<(topic: string) => object>> = {
   "MCQ": [
-    (t) => ({ text: `Which of the following best describes ${t}?`, options: [`It is related to geography`, `It is related to history`, `It is related to science`, `None of these`], answer: `It is related to geography` }),
-    (t) => ({ text: `${t} is primarily associated with:`, options: ["Natural resources", "Human activities", "Both natural and human factors", "None of these"], answer: "Both natural and human factors" }),
-    (t) => ({ text: `Which statement about ${t} is CORRECT?`, options: [`${t} occurs only in tropical regions`, `${t} is influenced by climate`, `${t} has no effect on environment`, `${t} is a recent discovery`], answer: `${t} is influenced by climate` }),
+    (t) => ({ text: `Which of the following is correct about ${t}?`, options: [`${t} always holds`, `${t} never holds`, `${t} holds under conditions`, `None of these`], answer: `${t} holds under conditions` }),
+    (t) => ({ text: `The key property of ${t} is:`, options: ["Commutativity", "Associativity", "Distributivity", "All of these"], answer: "All of these" }),
   ],
   "Short Answer": [
-    (t) => ({ text: `What is ${t}? Explain its importance with an example.` }),
-    (t) => ({ text: `Describe the main features of ${t}.` }),
-    (t) => ({ text: `How does ${t} affect our daily life? Give two points.` }),
+    (t) => ({ text: `What is ${t}? Explain with an example.` }),
+    (t) => ({ text: `State the main result related to ${t}.` }),
   ],
   "Long Answer": [
-    (t) => ({ text: `Explain ${t} in detail. Describe its causes, effects, and significance. Support your answer with suitable examples.` }),
-    (t) => ({ text: `Write a detailed note on ${t}. Include its definition, characteristics, and real-world examples.` }),
+    (t) => ({ text: `Explain ${t} in detail with proof or derivation, and give two applications.` }),
   ],
   "Fill in the Blanks": [
-    (t) => ({ text: `${t} is mainly found in ______ regions.`, answer: `[relevant region]` }),
-    (t) => ({ text: `The study of ${t} is important because ______.`, answer: `[reason]` }),
+    (t) => ({ text: `The result obtained using ${t} is ______.`, answer: `[value]` }),
   ],
   "True/False": [
-    (t) => ({ text: `${t} has no impact on human settlements. (True/False)`, answer: "False" }),
-    (t) => ({ text: `${t} is an important topic in geography. (True/False)`, answer: "True" }),
+    (t) => ({ text: `Every problem involving ${t} has a unique solution. (True/False)`, answer: "False" }),
   ],
   "Match the Following": [
-    (t) => ({ text: `Match the following terms related to ${t}:\nColumn A: Term 1, Term 2, Term 3\nColumn B: Description 1, Description 2, Description 3` }),
+    (t) => ({ text: `Match the following terms related to ${t}:\nColumn A: Term 1, Term 2, Term 3\nColumn B: Definition 1, Definition 2, Definition 3` }),
   ],
 };
 
@@ -189,18 +184,16 @@ export function generateQuestionsFromTopics(
           ...(bq.answer ? { answer: bq.answer } : {}),
         });
       } else {
-        // Fallback: generate from actual topics the teacher provided
+        // Fallback: use template-based for topics not in bank
         const topic = topics[i % topics.length];
-        // Strip "Chapter N " prefix if present (e.g. "Chapter 1  Reading and Analysis of Maps" → "Reading and Analysis of Maps")
-        const cleanTopic = topic.replace(/^chapter\s*\d+[\s:–-]*/i, "").trim() || topic;
         const fns = FALLBACK_TEMPLATES[type] || FALLBACK_TEMPLATES["Short Answer"];
-        const base = fns[i % fns.length](cleanTopic);
+        const base = fns[i % fns.length](topic);
         results.push({
           id: `gen_${Date.now()}_${Math.random().toString(36).slice(2)}`,
           type,
           difficulty,
           marks: marksEach,
-          topic: cleanTopic,
+          topic,
           subject,
           board,
           class: cls,

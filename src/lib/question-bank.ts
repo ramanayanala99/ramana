@@ -223,8 +223,7 @@ export const QUESTION_BANK: BankQuestion[] = [
 
 ];
 
-// Search question bank by topic keywords (fuzzy match).
-// Returns empty array if no relevant match found — caller should fall back to templates.
+// Search question bank by topic keywords (fuzzy match)
 export function searchQuestions(
   topics: string[],
   type?: string,
@@ -241,15 +240,25 @@ export function searchQuestions(
       const qText = normalise(q.text + " " + q.topic + " " + q.chapter);
       const score = topicNorm.reduce((s, t) => {
         if (qText.includes(t)) return s + 3;
+        // Partial word match
         const words = t.split(" ");
         return s + words.filter(w => w.length > 3 && qText.includes(w)).length;
       }, 0);
       return { q, score };
     })
-    .filter(({ score }) => score >= 2)   // require meaningful match
+    .filter(({ score }) => score > 0)
     .sort((a, b) => b.score - a.score);
 
-  return scored.slice(0, count).map(({ q }) => q);
+  // If not enough exact matches, fill with general questions on same subject
+  const results = scored.slice(0, count).map(({ q }) => q);
+  if (results.length < count) {
+    const extra = QUESTION_BANK
+      .filter(q => !results.includes(q))
+      .filter(q => !type || q.type === type)
+      .slice(0, count - results.length);
+    results.push(...extra);
+  }
+  return results;
 }
 
 // For a given chapter name, get all questions
