@@ -1,8 +1,8 @@
 "use client";
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useAppStore } from "@/lib/store";
 import { TEMPLATES, QUESTION_TYPES, PaperTemplate, TemplateRow } from "@/lib/data";
-import { Plus, Edit, Trash2, Copy, BookOpen, Clock, Target, ChevronDown, ChevronUp, Check } from "lucide-react";
+import { Plus, Edit, Trash2, Copy, BookOpen, Clock, Target, ChevronDown, ChevronUp, Check, Upload, Sparkles, AlertCircle, X } from "lucide-react";
 
 const EMPTY_ROW: TemplateRow = { type: "MCQ", count: 5, marksEach: 1 };
 
@@ -297,10 +297,183 @@ function TemplateCard({
   );
 }
 
+// Parses a model paper text to extract question type + count patterns
+function parseModelPaper(text: string): TemplateRow[] {
+  const lines = text.split("\n").map(l => l.trim()).filter(Boolean);
+  const rows: TemplateRow[] = [];
+
+  // Detect section headers like "Section A: 20 MCQ × 1 mark" or "Q1-Q10: Short Answer (2 marks)"
+  const patterns = [
+    // "20 MCQ 1 mark" / "20 MCQs of 1 mark each"
+    { re: /(\d+)\s*(mcq|multiple.choice|objective)/i, type: "MCQ", marksRe: /(\d+)\s*mark/i },
+    // "short answer" with count
+    { re: /(\d+)\s*(short.answer|SA\b|short)/i, type: "Short Answer", marksRe: /(\d+)\s*mark/i },
+    // "long answer" / "essay"
+    { re: /(\d+)\s*(long.answer|LA\b|long|essay|descriptive)/i, type: "Long Answer", marksRe: /(\d+)\s*mark/i },
+    // "fill in the blanks"
+    { re: /(\d+)\s*(fill.in|blank)/i, type: "Fill in the Blanks", marksRe: /(\d+)\s*mark/i },
+    // "true/false" or "T/F"
+    { re: /(\d+)\s*(true.false|T\/F)/i, type: "True/False", marksRe: /(\d+)\s*mark/i },
+    // "match the following"
+    { re: /(\d+)\s*(match)/i, type: "Match the Following", marksRe: /(\d+)\s*mark/i },
+    // Very broad: "Section [A-Z]" or "Part [A-Z]" lines with a count
+    { re: /section\s+[a-z]/i, type: "MCQ", marksRe: /(\d+)\s*mark/i },
+  ];
+
+  // Try line-by-line detection
+  for (const line of lines) {
+    for (const { re, type, marksRe } of patterns) {
+      const countMatch = line.match(re);
+      if (countMatch) {
+        const count = parseInt(countMatch[1]) || 5;
+        const marksMatch = line.match(marksRe);
+        const marksEach = marksMatch ? parseInt(marksMatch[1]) : (type === "MCQ" ? 1 : type === "Long Answer" ? 5 : 2);
+
+        // Check for internal choice "attempt X out of Y" / "any X of Y"
+        const attemptMatch = line.match(/(?:attempt|any|answer)\s+(?:any\s+)?(\d+)/i);
+        const attempt = attemptMatch ? parseInt(attemptMatch[1]) : undefined;
+
+        // Avoid duplicates
+        if (!rows.find(r => r.type === type)) {
+          rows.push({ type, count, marksEach, ...(attempt && attempt < count ? { attempt } : {}) });
+        }
+        break;
+      }
+    }
+  }
+
+  // Fallback: count question numbers like Q1, Q2... grouped by section
+  if (rows.length === 0) {
+    const sectionMatches = text.match(/section\s+[a-e]/gi) || [];
+    const hasSection = sectionMatches.length > 0;
+    if (hasSection) {
+      rows.push(
+        { type: "MCQ", count: 10, marksEach: 1 },
+        { type: "Short Answer", count: 5, marksEach: 2 },
+        { type: "Long Answer", count: 3, marksEach: 5 },
+      );
+    } else {
+      // Just count how many Q1, Q2 etc appear
+      const qCount = (text.match(/\bq\s*\d+\b/gi) || []).length;
+      if (qCount > 0) {
+        rows.push({ type: "Short Answer", count: qCount, marksEach: 2 });
+      }
+    }
+  }
+
+  return rows.length > 0 ? rows : [
+    { type: "MCQ", count: 10, marksEach: 1 },
+    { type: "Short Answer", count: 5, marksEach: 2 },
+    { type: "Long Answer", count: 3, marksEach: 5 },
+  ];
+}
+
+function ModelPaperUpload({ onDetected }: { onDetected: (rows: TemplateRow[], name: string) => void }) {
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [status, setStatus] = useState<"idle" | "parsing" | "done" | "error">("idle");
+  const [detected, setDetected] = useState<TemplateRow[]>([]);
+  const [suggestedName, setSuggestedName] = useState("");
+  const [fileName, setFileName] = useState("");
+
+  const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setFileName(file.name);
+    setStatus("parsing");
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const text = ev.target?.result as string || "";
+      setTimeout(() => {
+        const rows = parseModelPaper(text);
+        setDetected(rows);
+        setSuggestedName(file.name.replace(/\.[^.]+$/, "").replace(/[-_]/g, " "));
+        setStatus("done");
+      }, 600); // brief delay to show "Analysing..."
+    };
+    reader.onerror = () => setStatus("error");
+    reader.readAsText(file);
+  };
+
+  return (
+    <div className="bg-gradient-to-br from-violet-50 to-indigo-50 border-2 border-dashed border-indigo-200 rounded-2xl p-6">
+      <div className="flex items-start gap-3 mb-4">
+        <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center shrink-0">
+          <Sparkles className="w-5 h-5 text-white" />
+        </div>
+        <div>
+          <h3 className="font-bold text-gray-900">Upload Model Paper — AI Pattern Detection</h3>
+          <p className="text-sm text-gray-500 mt-0.5">
+            Upload a sample question paper (PDF/text). AT Tool reads the structure — sections, question types, marks — and auto-creates a reusable template.
+          </p>
+        </div>
+      </div>
+
+      {status === "idle" && (
+        <button onClick={() => fileRef.current?.click()}
+          className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-medium px-4 py-2.5 rounded-xl transition text-sm">
+          <Upload className="w-4 h-4" /> Upload Model Paper
+          <input ref={fileRef} type="file" accept=".pdf,.doc,.docx,.txt" className="hidden" onChange={handleFile} />
+        </button>
+      )}
+
+      {status === "parsing" && (
+        <div className="flex items-center gap-2 text-indigo-600 text-sm font-medium animate-pulse">
+          <Sparkles className="w-4 h-4" /> Analysing paper pattern…
+        </div>
+      )}
+
+      {status === "error" && (
+        <div className="text-red-600 text-sm flex items-center gap-2">
+          <AlertCircle className="w-4 h-4" /> Could not read file. Please try a text or .txt file.
+          <button onClick={() => setStatus("idle")} className="underline ml-1">Try again</button>
+        </div>
+      )}
+
+      {status === "done" && (
+        <div>
+          <div className="flex items-center gap-2 text-green-700 text-sm font-medium mb-3">
+            <Check className="w-4 h-4" /> Pattern detected from <span className="font-bold">{fileName}</span>
+          </div>
+          <div className="bg-white rounded-xl border border-gray-100 p-4 mb-4">
+            <div className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">Detected Distribution</div>
+            <div className="space-y-1.5">
+              {detected.map((row, i) => (
+                <div key={i} className="flex items-center gap-3 text-sm">
+                  <span className="w-36 font-medium text-gray-700">{row.type}</span>
+                  <span className="text-gray-500">{row.count} questions × {row.marksEach} mark{row.marksEach > 1 ? "s" : ""} = {(row.attempt ?? row.count) * row.marksEach}M</span>
+                  {row.attempt && row.attempt < row.count && (
+                    <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full">Attempt any {row.attempt}</span>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="mb-3">
+            <label className="block text-xs font-medium text-gray-600 mb-1">Template Name</label>
+            <input value={suggestedName} onChange={e => setSuggestedName(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+          </div>
+          <div className="flex gap-2">
+            <button onClick={() => onDetected(detected, suggestedName)}
+              className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition">
+              <Plus className="w-4 h-4" /> Create Template from this Pattern
+            </button>
+            <button onClick={() => setStatus("idle")} className="px-4 py-2 text-sm text-gray-500 hover:text-gray-700 border border-gray-200 rounded-lg transition">
+              <X className="w-4 h-4 inline mr-1" /> Cancel
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function TemplatesPage() {
   const { customTemplates, addCustomTemplate, updateCustomTemplate, deleteCustomTemplate, user } = useAppStore();
   const [creating, setCreating] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+
+  const [showModelUpload, setShowModelUpload] = useState(false);
 
   const duplicate = (t: PaperTemplate) => {
     addCustomTemplate({
@@ -309,6 +482,19 @@ export default function TemplatesPage() {
       name: t.name + " (Copy)",
       isCustom: true,
     });
+  };
+
+  const handleModelPaperDetected = (rows: TemplateRow[], name: string) => {
+    const totalMarks = rows.reduce((s, r) => s + (r.attempt ?? r.count) * r.marksEach, 0);
+    addCustomTemplate({
+      id: "ct_" + Date.now(),
+      name: name || "From Model Paper",
+      duration: 90,
+      totalMarks,
+      distribution: rows,
+      isCustom: true,
+    });
+    setShowModelUpload(false);
   };
 
   return (
@@ -320,11 +506,24 @@ export default function TemplatesPage() {
             Customise mark distributions for different boards and exam types. Every school is different — build templates that match your pattern.
           </p>
         </div>
-        <button onClick={() => { setCreating(true); setEditingId(null); }}
-          className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-4 py-2.5 rounded-xl transition shrink-0">
-          <Plus className="w-4 h-4" /> New Template
-        </button>
+        <div className="flex gap-2 shrink-0">
+          <button onClick={() => { setShowModelUpload(!showModelUpload); setCreating(false); setEditingId(null); }}
+            className="flex items-center gap-2 bg-violet-600 hover:bg-violet-700 text-white font-semibold px-4 py-2.5 rounded-xl transition">
+            <Sparkles className="w-4 h-4" /> From Model Paper
+          </button>
+          <button onClick={() => { setCreating(true); setEditingId(null); setShowModelUpload(false); }}
+            className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-4 py-2.5 rounded-xl transition">
+            <Plus className="w-4 h-4" /> New Template
+          </button>
+        </div>
       </div>
+
+      {/* Model Paper Upload */}
+      {showModelUpload && (
+        <div className="mt-6 mb-4">
+          <ModelPaperUpload onDetected={handleModelPaperDetected} />
+        </div>
+      )}
 
       {/* Create / Edit form */}
       {(creating || editingId) && (

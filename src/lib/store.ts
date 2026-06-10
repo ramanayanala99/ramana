@@ -2,6 +2,7 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { Question, QuestionPaper, PaperTemplate, SAMPLE_QUESTIONS } from "./data";
+import { LangCode } from "./i18n";
 
 interface User {
   id: string;
@@ -23,9 +24,11 @@ interface AppState {
   papers: QuestionPaper[];
   customTemplates: PaperTemplate[];
   teachers: Array<{ id: string; name: string; email: string; role: string; addedAt: string }>;
+  language: LangCode;
 
   login: (user: User) => void;
   logout: () => void;
+  setLanguage: (lang: LangCode) => void;
   addPaper: (paper: QuestionPaper) => void;
   updatePaper: (id: string, updates: Partial<QuestionPaper>) => void;
   deletePaper: (id: string) => void;
@@ -45,6 +48,7 @@ export const useAppStore = create<AppState>()(
       isAuthenticated: false,
       questions: SAMPLE_QUESTIONS,
       customTemplates: [],
+      language: "en" as LangCode,
       papers: [
         {
           id: "p1", title: "CBSE Class 10 Math Unit Test",
@@ -71,6 +75,7 @@ export const useAppStore = create<AppState>()(
 
       login: (user) => set({ user, isAuthenticated: true }),
       logout: () => set({ user: null, isAuthenticated: false }),
+      setLanguage: (language) => set({ language }),
       addPaper: (paper) => set((s) => ({ papers: [paper, ...s.papers] })),
       updatePaper: (id, updates) => set((s) => ({
         papers: s.papers.map((p) => p.id === id ? { ...p, ...updates } : p),

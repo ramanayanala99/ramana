@@ -2,10 +2,11 @@
 import { useState } from "react";
 import { useAppStore } from "@/lib/store";
 import { SUBJECTS, INDIAN_BOARDS } from "@/lib/data";
+import { LANGUAGES } from "@/lib/i18n";
 import { Settings, User, Bell, Globe, Check } from "lucide-react";
 
 export default function SettingsPage() {
-  const { user, login } = useAppStore();
+  const { user, login, language, setLanguage } = useAppStore();
   const [tab, setTab] = useState("profile");
   const [saved, setSaved] = useState(false);
 
@@ -100,10 +101,17 @@ export default function SettingsPage() {
             </div>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Default Language</label>
-            <select className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500">
-              <option>English</option><option>Hindi</option><option>Tamil</option><option>Telugu</option>
-            </select>
+            <label className="block text-sm font-medium text-gray-700 mb-2">App Language</label>
+            <div className="grid grid-cols-3 gap-2">
+              {LANGUAGES.map((lang) => (
+                <button key={lang.code}
+                  onClick={() => setLanguage(lang.code as Parameters<typeof setLanguage>[0])}
+                  className={`flex flex-col items-center p-2.5 rounded-xl border text-center transition ${language === lang.code ? "bg-indigo-50 border-indigo-400 text-indigo-700" : "border-gray-200 text-gray-600 hover:border-indigo-300"}`}>
+                  <span className="font-medium text-sm">{lang.native}</span>
+                  <span className="text-xs text-gray-400 mt-0.5">{lang.name}</span>
+                </button>
+              ))}
+            </div>
           </div>
           <button onClick={save} className="bg-indigo-600 hover:bg-indigo-700 text-white font-medium px-6 py-2.5 rounded-xl transition">Save Preferences</button>
         </div>

@@ -5,15 +5,16 @@ import Link from "next/link";
 import { useAppStore } from "@/lib/store";
 import { INDIAN_BOARDS, SUBJECTS, CLASSES, EXAM_TYPES, TEMPLATES, QUESTION_TYPES, DIFFICULTY_LEVELS, Question, PaperTemplate } from "@/lib/data";
 import { getSyllabus, generateQuestionsFromTopics } from "@/lib/syllabus";
+import { getTextbooks } from "@/lib/textbooks";
 import {
   BookOpen, Upload, FileText, Wand2, CheckCircle, Plus, Trash2,
   Edit, ChevronRight, Zap, Settings, AlertCircle, X, Check,
-  ScanLine, PenLine, Database, Sparkles, ArrowRight
+  ScanLine, PenLine, Database, Sparkles, ArrowRight, Library
 } from "lucide-react";
 
 const STEPS = ["Basic Info", "Content Source", "Template", "AI Generate", "Review & Finalize"];
 
-type SourceMode = "predefined" | "manual" | "upload" | "scan";
+type SourceMode = "predefined" | "textbook" | "manual" | "upload" | "scan";
 
 export default function CreatePaperPage() {
   const router = useRouter();
@@ -37,6 +38,10 @@ export default function CreatePaperPage() {
   const [uploadedFile, setUploadedFile] = useState<string | null>(null);
   const [customChapters, setCustomChapters] = useState<string[]>([]);
   const [newChapter, setNewChapter] = useState("");
+  // Textbook DB mode
+  const [selectedTextbookId, setSelectedTextbookId] = useState<string | null>(null);
+  const [tbChapters, setTbChapters] = useState<string[]>([]);
+  const [teacherNotes, setTeacherNotes] = useState("");
 
   // Step 3 - Template
   const [selectedTemplate, setSelectedTemplate] = useState<PaperTemplate>(TEMPLATES[1]);
@@ -64,10 +69,20 @@ export default function CreatePaperPage() {
     setSelectedChapters(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
   };
 
+  const textbooks = getTextbooks(form.board, form.class, form.subject);
+  const selectedTextbook = textbooks.find(b => b.id === selectedTextbookId) || textbooks[0] || null;
+
+  const toggleTbChapter = (id: string) => {
+    setTbChapters(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+  };
+
   const getSelectedTopics = (): string[] => {
     const topics: string[] = [];
     if (sourceMode === "predefined" && syllabus) {
       syllabus.chapters.filter(c => selectedChapters.includes(c.id)).forEach(c => topics.push(...c.topics));
+    } else if (sourceMode === "textbook" && selectedTextbook) {
+      selectedTextbook.chapters.filter(c => tbChapters.includes(String(c.number))).forEach(c => topics.push(...c.topics));
+      teacherNotes.split("\n").map(t => t.trim()).filter(Boolean).forEach(t => topics.push(t));
     } else if (sourceMode === "manual") {
       manualTopics.split("\n").map(t => t.trim()).filter(Boolean).forEach(t => topics.push(t));
       customChapters.forEach(c => topics.push(c));
@@ -213,9 +228,10 @@ export default function CreatePaperPage() {
             <p className="text-gray-500 text-sm mb-5">Tell AT Tool where to get syllabus content from. You can combine multiple sources.</p>
 
             {/* Source mode tabs */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-6">
               {[
                 { mode: "predefined" as SourceMode, icon: BookOpen, label: "Pre-defined Syllabus", desc: "CBSE/ICSE chapter lists" },
+                { mode: "textbook" as SourceMode, icon: Library, label: "Textbook Database", desc: "NCERT & state books" },
                 { mode: "manual" as SourceMode, icon: PenLine, label: "Type Topics", desc: "Enter your own syllabus" },
                 { mode: "upload" as SourceMode, icon: Upload, label: "Upload PDF / Doc", desc: "Textbook or notes" },
                 { mode: "scan" as SourceMode, icon: ScanLine, label: "Scan / Image", desc: "Photo of printed syllabus" },
@@ -279,6 +295,80 @@ export default function CreatePaperPage() {
                     </div>
                     <p className="text-amber-600 text-xs">Please use "Type Topics" or "Upload PDF" instead. More boards are being added regularly.</p>
                   </div>
+                )}
+              </div>
+            )}
+
+            {/* Textbook Database */}
+            {sourceMode === "textbook" && (
+              <div className="space-y-4">
+                {textbooks.length === 0 ? (
+                  <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-amber-700 text-sm">
+                    <AlertCircle className="w-4 h-4 inline mr-1.5" />
+                    No textbooks found for {form.board} Class {form.class} {form.subject}. Try CBSE boards or use another source.
+                  </div>
+                ) : (
+                  <>
+                    {/* Step 1: Select Book */}
+                    <div>
+                      <div className="text-xs font-bold text-indigo-700 uppercase tracking-wide mb-2">Step 1 — Select Textbook</div>
+                      <div className="grid gap-2">
+                        {textbooks.map(book => (
+                          <button key={book.id} onClick={() => { setSelectedTextbookId(book.id); setTbChapters([]); }}
+                            className={`text-left p-3 rounded-xl border-2 transition ${selectedTextbookId === book.id || (!selectedTextbookId && book === textbooks[0]) ? "border-indigo-400 bg-indigo-50" : "border-gray-200 hover:border-indigo-300"}`}>
+                            <div className="font-semibold text-gray-900 text-sm">{book.title}</div>
+                            <div className="text-xs text-gray-500 mt-0.5">{book.publisher} · {book.chapters.length} chapters</div>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    {/* Step 2: Select Chapters */}
+                    {selectedTextbook && (
+                      <div>
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="text-xs font-bold text-indigo-700 uppercase tracking-wide">Step 2 — Select Chapters</div>
+                          <div className="flex gap-2">
+                            <button onClick={() => setTbChapters(selectedTextbook.chapters.map(c => String(c.number)))}
+                              className="text-xs text-indigo-600 hover:underline">Select All</button>
+                            <span className="text-gray-300">|</span>
+                            <button onClick={() => setTbChapters([])}
+                              className="text-xs text-gray-500 hover:underline">Clear</button>
+                          </div>
+                        </div>
+                        <div className="grid sm:grid-cols-2 gap-2 max-h-64 overflow-y-auto">
+                          {selectedTextbook.chapters.map(ch => (
+                            <button key={ch.number} onClick={() => toggleTbChapter(String(ch.number))}
+                              className={`text-left p-3 rounded-xl border transition ${tbChapters.includes(String(ch.number)) ? "border-indigo-400 bg-indigo-50" : "border-gray-200 hover:border-indigo-300"}`}>
+                              <div className="flex items-center gap-2">
+                                <div className={`w-5 h-5 rounded flex items-center justify-center shrink-0 ${tbChapters.includes(String(ch.number)) ? "bg-indigo-600" : "bg-gray-200"}`}>
+                                  {tbChapters.includes(String(ch.number)) && <Check className="w-3 h-3 text-white" />}
+                                </div>
+                                <div>
+                                  <div className="text-xs font-bold text-gray-500">Ch {ch.number}</div>
+                                  <div className="text-sm font-medium text-gray-900">{ch.title}</div>
+                                </div>
+                              </div>
+                              <div className="mt-1.5 flex flex-wrap gap-1 ml-7">
+                                {ch.topics.slice(0, 3).map(t => (
+                                  <span key={t} className="text-xs bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded">{t}</span>
+                                ))}
+                                {ch.topics.length > 3 && <span className="text-xs text-gray-400">+{ch.topics.length - 3}</span>}
+                              </div>
+                            </button>
+                          ))}
+                        </div>
+                        <div className="mt-2 text-xs text-gray-500">{tbChapters.length} chapter{tbChapters.length !== 1 ? "s" : ""} selected</div>
+                      </div>
+                    )}
+                    {/* Step 3: Teacher's own notes */}
+                    <div>
+                      <div className="text-xs font-bold text-indigo-700 uppercase tracking-wide mb-2">Step 3 — Add Own Notes / Questions (Optional)</div>
+                      <textarea value={teacherNotes} onChange={e => setTeacherNotes(e.target.value)} rows={4}
+                        placeholder={"Add any extra topics, concepts, or your own questions here.\nOne per line. E.g:\n- Important: Euclid's Division Lemma\n- Include word problems on LCM/HCF\n- Previous year question: Prove √2 is irrational"}
+                        className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm resize-none" />
+                      <p className="text-xs text-gray-400 mt-1">These notes will be used alongside the textbook chapters to generate questions.</p>
+                    </div>
+                  </>
                 )}
               </div>
             )}
