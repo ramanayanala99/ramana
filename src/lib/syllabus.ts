@@ -125,7 +125,32 @@ export function getSyllabus(board: string, cls: string, subject: string): Subjec
   return SYLLABUS_DB.find(s => s.board === board && s.class === cls && s.subject === subject) || null;
 }
 
-// AI question generation — simulates what an LLM would produce per topic
+// AI question generation — pulls from real NCERT question bank, falls back to templates
+import { searchQuestions } from "./question-bank";
+
+const FALLBACK_TEMPLATES: Record<string, Array<(topic: string) => object>> = {
+  "MCQ": [
+    (t) => ({ text: `Which of the following is correct about ${t}?`, options: [`${t} always holds`, `${t} never holds`, `${t} holds under conditions`, `None of these`], answer: `${t} holds under conditions` }),
+    (t) => ({ text: `The key property of ${t} is:`, options: ["Commutativity", "Associativity", "Distributivity", "All of these"], answer: "All of these" }),
+  ],
+  "Short Answer": [
+    (t) => ({ text: `What is ${t}? Explain with an example.` }),
+    (t) => ({ text: `State the main result related to ${t}.` }),
+  ],
+  "Long Answer": [
+    (t) => ({ text: `Explain ${t} in detail with proof or derivation, and give two applications.` }),
+  ],
+  "Fill in the Blanks": [
+    (t) => ({ text: `The result obtained using ${t} is ______.`, answer: `[value]` }),
+  ],
+  "True/False": [
+    (t) => ({ text: `Every problem involving ${t} has a unique solution. (True/False)`, answer: "False" }),
+  ],
+  "Match the Following": [
+    (t) => ({ text: `Match the following terms related to ${t}:\nColumn A: Term 1, Term 2, Term 3\nColumn B: Definition 1, Definition 2, Definition 3` }),
+  ],
+};
+
 export function generateQuestionsFromTopics(
   topics: string[],
   subject: string,
@@ -133,55 +158,48 @@ export function generateQuestionsFromTopics(
   board: string,
   distribution: Array<{ type: string; count: number; marksEach: number }>
 ) {
-  const templates: Record<string, Array<(topic: string) => object>> = {
-    "MCQ": [
-      (t) => ({ text: `Which of the following statements about ${t} is CORRECT?`, options: [`${t} is always positive`, `${t} can be negative`, `${t} is undefined`, `None of the above`], answer: `${t} can be negative` }),
-      (t) => ({ text: `The concept of ${t} was first introduced by:`, options: ["Newton", "Einstein", "Euclid", "Pythagoras"], answer: "Newton" }),
-      (t) => ({ text: `Which formula is used to calculate ${t}?`, options: ["Formula A", "Formula B", "Formula C", "Formula D"], answer: "Formula A" }),
-    ],
-    "Short Answer": [
-      (t) => ({ text: `Define ${t} and state its significance.` }),
-      (t) => ({ text: `Explain the concept of ${t} with a suitable example.` }),
-      (t) => ({ text: `State two properties of ${t}.` }),
-    ],
-    "Long Answer": [
-      (t) => ({ text: `Explain ${t} in detail. Describe its properties, applications, and derive the main result associated with it.` }),
-      (t) => ({ text: `Prove the theorem related to ${t}. State the theorem clearly and provide a step-by-step proof.` }),
-    ],
-    "Fill in the Blanks": [
-      (t) => ({ text: `The main formula used in ${t} is ______.`, answer: `[Formula for ${t}]` }),
-      (t) => ({ text: `In ${t}, when the value increases, the result ______.`, answer: "also increases" }),
-    ],
-    "True/False": [
-      (t) => ({ text: `${t} is always applicable in all cases. (True/False)`, answer: "False" }),
-      (t) => ({ text: `The concept of ${t} was developed in the 20th century. (True/False)`, answer: "True" }),
-    ],
-    "Match the Following": [
-      (t) => ({ text: `Match the terms related to ${t} with their definitions:\nColumn A: Term 1, Term 2, Term 3\nColumn B: Definition 1, Definition 2, Definition 3` }),
-    ],
-  };
-
   const results: object[] = [];
-  let topicIndex = 0;
 
   for (const { type, count, marksEach } of distribution) {
-    const typeFns = templates[type] || templates["Short Answer"];
+    const difficulty = marksEach <= 1 ? "Easy" : marksEach <= 3 ? "Medium" : "Hard";
+
+    // Try real question bank first
+    const bankQs = searchQuestions(topics, type, difficulty, count * 3);
+    let bankIdx = 0;
+
     for (let i = 0; i < count; i++) {
-      const topic = topics[topicIndex % topics.length];
-      topicIndex++;
-      const fn = typeFns[i % typeFns.length];
-      const base = fn(topic);
-      results.push({
-        id: `gen_${Date.now()}_${Math.random().toString(36).slice(2)}`,
-        type,
-        difficulty: marksEach <= 1 ? "Easy" : marksEach <= 3 ? "Medium" : "Hard",
-        marks: marksEach,
-        topic,
-        subject,
-        board,
-        class: cls,
-        ...base,
-      });
+      if (bankIdx < bankQs.length) {
+        const bq = bankQs[bankIdx++];
+        results.push({
+          id: `gen_${Date.now()}_${Math.random().toString(36).slice(2)}`,
+          type: bq.type,
+          difficulty: bq.difficulty,
+          marks: marksEach,
+          topic: bq.topic,
+          subject,
+          board,
+          class: cls,
+          text: bq.text,
+          ...(bq.options ? { options: bq.options } : {}),
+          ...(bq.answer ? { answer: bq.answer } : {}),
+        });
+      } else {
+        // Fallback: use template-based for topics not in bank
+        const topic = topics[i % topics.length];
+        const fns = FALLBACK_TEMPLATES[type] || FALLBACK_TEMPLATES["Short Answer"];
+        const base = fns[i % fns.length](topic);
+        results.push({
+          id: `gen_${Date.now()}_${Math.random().toString(36).slice(2)}`,
+          type,
+          difficulty,
+          marks: marksEach,
+          topic,
+          subject,
+          board,
+          class: cls,
+          ...base,
+        });
+      }
     }
   }
   return results;
