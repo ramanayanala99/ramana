@@ -166,3 +166,6 @@ export const TEMPLATES: PaperTemplate[] = [
     ]
   },
 ];
+
+// App version — updated to track releases
+export const APP_VERSION = "1.1.0";
