@@ -1,118 +1,141 @@
 "use client";
+
 import { useState } from "react";
 import { useAppStore } from "@/lib/store";
-import { CreditCard, Check, Zap, Shield, Clock } from "lucide-react";
+import { CreditCard, CheckCircle } from "lucide-react";
 
-const PLANS = [
-  {
-    id: "starter", name: "Starter", priceINR: 799, label: "For individual teachers",
-    features: ["Up to 3 teachers", "All 28+ boards", "50 papers/month", "PDF export with branding", "Basic question bank", "Email support"],
-  },
-  {
-    id: "pro", name: "Pro", priceINR: 5999, label: "For schools & institutes",
-    features: ["Unlimited teachers", "All 28+ boards", "Unlimited papers", "AI question suggestions", "Collaborative editing", "Admin dashboard", "LMS integration", "Custom templates", "Priority support + onboarding call"],
-    popular: true,
-  },
+const MOCK_INVOICES = [
+  { id: "INV-001", date: "2026-05-11", amount: "$50.00", status: "Paid" },
+  { id: "INV-002", date: "2026-04-11", amount: "$50.00", status: "Paid" },
+  { id: "INV-003", date: "2026-03-11", amount: "$50.00", status: "Paid" },
 ];
 
 export default function BillingPage() {
   const { user } = useAppStore();
-  const [billing, setBilling] = useState<"monthly" | "annual">("monthly");
-  const [selected, setSelected] = useState("pro");
+  const [cardNumber, setCardNumber] = useState("");
+  const [expiry, setExpiry] = useState("");
+  const [cvc, setCvc] = useState("");
+
+  const trialEnd = user?.trialEndsAt ? new Date(user.trialEndsAt) : null;
+  const today = new Date("2026-06-11");
+  const daysLeft = trialEnd ? Math.max(0, Math.ceil((trialEnd.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))) : 0;
 
   return (
-    <div className="p-8 max-w-4xl">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Billing & Plans</h1>
-        <p className="text-gray-500 mt-1">Manage your subscription and billing details.</p>
+    <div className="max-w-3xl mx-auto space-y-6">
+      <div>
+        <h1 className="text-3xl font-bold text-white">Billing</h1>
+        <p className="text-gray-400 text-sm mt-1">Manage your subscription and payment details.</p>
       </div>
 
-      {/* Current Plan */}
-      <div className="bg-indigo-50 border border-indigo-100 rounded-2xl p-5 mb-8 flex items-center justify-between">
-        <div>
-          <div className="text-sm text-indigo-600 font-medium">Current Plan</div>
-          <div className="text-lg font-bold text-gray-900 mt-0.5">{user?.plan?.toUpperCase() || "FREE"} Plan</div>
-          {user?.trialEndsAt && <div className="text-sm text-indigo-600 mt-1">Free trial ends: {user.trialEndsAt}</div>}
-        </div>
-        <div className="flex items-center gap-2 bg-green-100 text-green-700 text-sm font-medium px-3 py-1.5 rounded-full">
-          <Check className="w-4 h-4" />
-          Active
-        </div>
-      </div>
-
-      {/* Billing Toggle */}
-      <div className="flex items-center gap-3 mb-6">
-        <span className={`text-sm font-medium ${billing === "monthly" ? "text-gray-900" : "text-gray-400"}`}>Monthly</span>
-        <button onClick={() => setBilling(billing === "monthly" ? "annual" : "monthly")}
-          className={`relative w-12 h-6 rounded-full transition-colors ${billing === "annual" ? "bg-indigo-600" : "bg-gray-200"}`}>
-          <div className={`absolute w-5 h-5 bg-white rounded-full top-0.5 transition-transform ${billing === "annual" ? "translate-x-6" : "translate-x-0.5"}`} />
-        </button>
-        <span className={`text-sm font-medium ${billing === "annual" ? "text-gray-900" : "text-gray-400"}`}>
-          Annual <span className="bg-green-100 text-green-700 text-xs px-1.5 py-0.5 rounded-full ml-1">Save 20%</span>
-        </span>
-      </div>
-
-      <div className="grid md:grid-cols-2 gap-6 mb-8">
-        {PLANS.map((plan) => {
-          const price = billing === "annual" ? Math.round(plan.priceINR * 0.8) : plan.priceINR;
-          return (
-            <div key={plan.id} onClick={() => setSelected(plan.id)}
-              className={`rounded-2xl p-6 border-2 cursor-pointer transition relative ${selected === plan.id ? "border-indigo-600 bg-indigo-50" : "border-gray-200 bg-white hover:border-indigo-300"}`}>
-              {plan.popular && (
-                <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-indigo-600 text-white text-xs font-bold px-4 py-1 rounded-full">MOST POPULAR</div>
-              )}
-              <div className="font-bold text-lg text-gray-900">{plan.name}</div>
-              <div className="text-sm text-gray-500 mb-3">{plan.label}</div>
-              <div className="flex items-baseline gap-1 mb-4">
-                <span className="text-3xl font-extrabold text-gray-900">₹{price.toLocaleString("en-IN")}</span>
-                <span className="text-gray-500">/month</span>
+      {/* Current plan */}
+      <div className="glass-card p-6">
+        <h2 className="text-lg font-bold text-white mb-4">Current Plan</h2>
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <p className="text-2xl font-black text-white capitalize">{user?.plan} Plan</p>
+            <p className="text-sm text-gray-400">{user?.plan === "starter" ? "$10/month" : user?.plan === "pro" ? "$50/month" : "Free (Admin)"}</p>
+          </div>
+          <div className="text-right">
+            {daysLeft > 0 && (
+              <div className="px-3 py-1.5 rounded-full bg-green-900/30 border border-green-800/50 text-green-400 text-sm font-medium">
+                {daysLeft} days trial remaining
               </div>
-              {billing === "annual" && <div className="text-xs text-green-600 mb-3">₹{(price * 12).toLocaleString("en-IN")}/year · Save ₹{(plan.priceINR * 12 - price * 12).toLocaleString("en-IN")}</div>}
-              <ul className="space-y-2">
+            )}
+          </div>
+        </div>
+        {daysLeft > 0 && (
+          <div className="p-4 rounded-lg bg-purple-900/20 border border-purple-800/30 text-sm text-purple-300">
+            Your free trial ends on {user?.trialEndsAt}. Add a payment method below to continue after your trial.
+          </div>
+        )}
+      </div>
+
+      {/* Plan comparison */}
+      <div className="glass-card p-6">
+        <h2 className="text-lg font-bold text-white mb-4">Available Plans</h2>
+        <div className="grid grid-cols-2 gap-4">
+          {[
+            { name: "Starter", price: "$10/mo", features: ["2 characters", "10 videos/mo", "720p quality"] },
+            { name: "Pro", price: "$50/mo", features: ["5 characters", "Unlimited videos", "4K quality", "AI Voice"] },
+          ].map((plan) => (
+            <div key={plan.name} className={`p-4 rounded-xl border ${plan.name === "Pro" ? "border-purple-500 bg-purple-900/10" : "border-purple-900/40"}`}>
+              <p className="font-bold text-white">{plan.name}</p>
+              <p className="text-purple-400 font-semibold mb-3">{plan.price}</p>
+              <ul className="space-y-1">
                 {plan.features.map((f) => (
-                  <li key={f} className="flex items-center gap-2 text-sm text-gray-700">
-                    <Check className="w-4 h-4 text-green-500 shrink-0" />{f}
+                  <li key={f} className="text-xs text-gray-400 flex items-center gap-1">
+                    <CheckCircle className="w-3 h-3 text-purple-400 flex-shrink-0" /> {f}
                   </li>
                 ))}
               </ul>
+              {user?.plan !== plan.name.toLowerCase() && (
+                <button className="mt-3 w-full py-1.5 rounded-lg bg-purple-600 hover:bg-purple-700 text-white text-xs font-medium transition-colors">
+                  Switch to {plan.name}
+                </button>
+              )}
             </div>
-          );
-        })}
+          ))}
+        </div>
       </div>
 
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-        <h3 className="font-bold text-gray-900 mb-4 flex items-center gap-2"><CreditCard className="w-4 h-4 text-indigo-600" />Payment Details</h3>
-        <div className="grid sm:grid-cols-2 gap-4 mb-4">
-          <div className="sm:col-span-2">
-            <label className="block text-sm font-medium text-gray-700 mb-1">Card Number</label>
-            <input type="text" placeholder="4242 4242 4242 4242"
-              className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500" />
-          </div>
+      {/* Payment method */}
+      <div className="glass-card p-6">
+        <h2 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+          <CreditCard className="w-5 h-5 text-purple-400" /> Payment Method
+        </h2>
+        <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Expiry</label>
-            <input type="text" placeholder="MM / YY"
-              className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+            <label className="text-sm text-gray-300 mb-2 block">Card Number</label>
+            <input value={cardNumber} onChange={(e) => setCardNumber(e.target.value)} placeholder="4242 4242 4242 4242" maxLength={19}
+              className="w-full px-4 py-3 rounded-lg bg-[#1A1030] border border-purple-900/50 text-white placeholder-gray-600 focus:outline-none focus:border-purple-500 text-sm" />
           </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">CVV</label>
-            <input type="text" placeholder="•••"
-              className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="text-sm text-gray-300 mb-2 block">Expiry</label>
+              <input value={expiry} onChange={(e) => setExpiry(e.target.value)} placeholder="MM / YY" maxLength={7}
+                className="w-full px-4 py-3 rounded-lg bg-[#1A1030] border border-purple-900/50 text-white placeholder-gray-600 focus:outline-none focus:border-purple-500 text-sm" />
+            </div>
+            <div>
+              <label className="text-sm text-gray-300 mb-2 block">CVC</label>
+              <input value={cvc} onChange={(e) => setCvc(e.target.value)} placeholder="123" maxLength={4}
+                className="w-full px-4 py-3 rounded-lg bg-[#1A1030] border border-purple-900/50 text-white placeholder-gray-600 focus:outline-none focus:border-purple-500 text-sm" />
+            </div>
           </div>
+          <button className="w-full py-3 rounded-lg bg-purple-600 hover:bg-purple-700 text-white font-semibold transition-colors">
+            Save Payment Method
+          </button>
         </div>
-        <div className="flex items-center gap-2 text-xs text-gray-400 mb-4">
-          <Shield className="w-4 h-4" />
-          Payments processed securely by Razorpay. GST applicable. We do not store card details.
-        </div>
-        <button className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-8 py-3 rounded-xl transition flex items-center gap-2">
-          <Zap className="w-4 h-4" />
-          Subscribe Now · {billing === "monthly" ? `₹${PLANS.find((p) => p.id === selected)?.priceINR.toLocaleString("en-IN")}/mo` : `₹${(Math.round((PLANS.find((p) => p.id === selected)?.priceINR || 0) * 0.8) * 12).toLocaleString("en-IN")}/yr`}
-        </button>
       </div>
 
-      <div className="mt-4 flex items-center gap-6 text-xs text-gray-400">
-        <span className="flex items-center gap-1"><Check className="w-3 h-3" /> 14-day free trial</span>
-        <span className="flex items-center gap-1"><Check className="w-3 h-3" /> Cancel anytime</span>
-        <span className="flex items-center gap-1"><Clock className="w-3 h-3" /> Instant activation</span>
+      {/* Invoice history */}
+      <div className="glass-card p-6">
+        <h2 className="text-lg font-bold text-white mb-4">Invoice History</h2>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-purple-900/30">
+                <th className="text-left text-gray-400 font-medium py-2">Invoice</th>
+                <th className="text-left text-gray-400 font-medium py-2">Date</th>
+                <th className="text-left text-gray-400 font-medium py-2">Amount</th>
+                <th className="text-left text-gray-400 font-medium py-2">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {MOCK_INVOICES.map((inv) => (
+                <tr key={inv.id} className="border-b border-purple-900/20">
+                  <td className="py-3 text-white">{inv.id}</td>
+                  <td className="py-3 text-gray-400">{inv.date}</td>
+                  <td className="py-3 text-white">{inv.amount}</td>
+                  <td className="py-3"><span className="px-2 py-0.5 rounded-full text-xs bg-green-900/30 text-green-400">{inv.status}</span></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div className="text-center">
+        <button className="text-sm text-red-400 hover:text-red-300 transition-colors">Cancel Subscription</button>
       </div>
     </div>
   );

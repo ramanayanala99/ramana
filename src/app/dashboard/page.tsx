@@ -1,123 +1,123 @@
 "use client";
+
+import { useState } from "react";
 import Link from "next/link";
 import { useAppStore } from "@/lib/store";
-import { Plus, FileText, Database, Clock, CheckCircle, TrendingUp, BookOpen, ArrowRight } from "lucide-react";
 
 export default function DashboardPage() {
-  const { user, papers } = useAppStore();
+  const { user, videos } = useAppStore();
+  const [prompt, setPrompt] = useState("");
 
-  const publishedCount = papers.filter((p) => p.status === "published").length;
-  const draftCount = papers.filter((p) => p.status === "draft").length;
-  const recentPapers = papers.slice(0, 5);
+  const trialEnd = user?.trialEndsAt ? new Date(user.trialEndsAt) : null;
+  const today = new Date("2026-06-11");
+  const trialDays = trialEnd ? Math.max(0, Math.ceil((trialEnd.getTime() - today.getTime()) / 86400000)) : 0;
+
+  const recent = videos.slice(0, 6);
 
   return (
-    <div className="p-8">
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900">
-          Good morning, {user?.name?.split(" ")[0]} 👋
-        </h1>
-        <p className="text-gray-500 mt-1">Here&apos;s your paper generation overview for {user?.schoolName}</p>
-        {user?.plan === "free" && (
-          <div className="mt-3 bg-yellow-50 border border-yellow-200 rounded-xl p-3 flex items-center justify-between">
-            <div className="text-sm text-yellow-800">
-              ⏱️ Your free trial ends in <strong>14 days</strong>. Upgrade to keep access.
-            </div>
-            <Link href="/dashboard/billing" className="text-xs bg-yellow-500 hover:bg-yellow-600 text-white font-semibold px-3 py-1.5 rounded-lg transition">
-              Upgrade
-            </Link>
-          </div>
-        )}
+    <div className="p-6 space-y-8 max-w-6xl mx-auto">
+      {/* Welcome */}
+      <div className="flex items-center justify-between flex-wrap gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-white">Welcome back, {user?.name ?? "User"}</h1>
+          <p className="text-gray-400 text-sm mt-1">Here&apos;s what&apos;s happening in your studio.</p>
+        </div>
+        <span className={`px-3 py-1 rounded-full text-sm font-semibold ${user?.plan === "pro" ? "bg-amber-400/20 text-amber-300 border border-amber-400/30" : "bg-purple-600/20 text-purple-300 border border-purple-500/30"}`}>
+          {user?.plan?.toUpperCase()} Plan
+        </span>
       </div>
 
+      {/* Trial countdown */}
+      {trialDays > 0 && (
+        <div className="rounded-xl border border-amber-400/30 bg-amber-400/10 p-4 flex items-center justify-between">
+          <div>
+            <p className="text-amber-300 font-semibold">Free Trial Active</p>
+            <p className="text-amber-200/70 text-sm">{trialDays} days remaining in your trial</p>
+          </div>
+          <Link href="/dashboard/billing" className="bg-amber-400 hover:bg-amber-500 text-black px-4 py-2 rounded-lg text-sm font-semibold transition">
+            Manage Plan
+          </Link>
+        </div>
+      )}
+
       {/* Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
-          { label: "Total Papers", value: papers.length, icon: FileText, color: "bg-indigo-500" },
-          { label: "Published", value: publishedCount, icon: CheckCircle, color: "bg-green-500" },
-          { label: "Drafts", value: draftCount, icon: Clock, color: "bg-orange-400" },
-          { label: "Time Saved", value: `${(papers.length * 3.5).toFixed(0)}h`, icon: TrendingUp, color: "bg-purple-500" },
-        ].map(({ label, value, icon: Icon, color }) => (
-          <div key={label} className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
-            <div className={`w-10 h-10 ${color} rounded-xl flex items-center justify-center mb-3`}>
-              <Icon className="w-5 h-5 text-white" />
-            </div>
-            <div className="text-2xl font-bold text-gray-900">{value}</div>
-            <div className="text-sm text-gray-500">{label}</div>
+          { label: "Videos Generated", value: videos.length },
+          { label: "Characters Saved", value: useAppStore.getState().characters.length },
+          { label: "Storage Used", value: `${(videos.length * 12.4).toFixed(0)} MB` },
+          { label: "Plan Status", value: trialDays > 0 ? "Trial" : "Active" },
+        ].map((stat) => (
+          <div key={stat.label} className="rounded-xl border border-purple-500/20 bg-[#1A1030] p-5">
+            <div className="text-2xl font-bold text-white">{stat.value}</div>
+            <div className="text-sm text-gray-400 mt-1">{stat.label}</div>
           </div>
         ))}
       </div>
 
-      {/* Quick Actions */}
-      <div className="grid md:grid-cols-3 gap-4 mb-8">
-        <Link href="/dashboard/create"
-          className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl p-6 flex items-center gap-4 transition card-hover">
-          <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
-            <Plus className="w-6 h-6" />
-          </div>
-          <div>
-            <div className="font-bold text-lg">Create New Paper</div>
-            <div className="text-indigo-200 text-sm">AI-powered generation</div>
-          </div>
-        </Link>
-        <Link href="/dashboard/questions"
-          className="bg-white hover:bg-gray-50 rounded-2xl p-6 flex items-center gap-4 border border-gray-100 transition card-hover">
-          <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">
-            <Database className="w-6 h-6 text-green-600" />
-          </div>
-          <div>
-            <div className="font-bold text-lg text-gray-900">Question Bank</div>
-            <div className="text-gray-500 text-sm">Browse & manage questions</div>
-          </div>
-        </Link>
-        <Link href="/dashboard/papers"
-          className="bg-white hover:bg-gray-50 rounded-2xl p-6 flex items-center gap-4 border border-gray-100 transition card-hover">
-          <div className="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center">
-            <BookOpen className="w-6 h-6 text-purple-600" />
-          </div>
-          <div>
-            <div className="font-bold text-lg text-gray-900">My Papers</div>
-            <div className="text-gray-500 text-sm">View all created papers</div>
-          </div>
-        </Link>
-      </div>
-
-      {/* Recent Papers */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm">
-        <div className="p-5 border-b border-gray-100 flex items-center justify-between">
-          <h2 className="font-bold text-gray-900">Recent Papers</h2>
-          <Link href="/dashboard/papers" className="text-sm text-indigo-600 hover:underline flex items-center gap-1">
-            View all <ArrowRight className="w-3 h-3" />
+      {/* Quick create */}
+      <div className="rounded-xl border border-purple-500/20 bg-[#1A1030] p-6">
+        <h2 className="text-lg font-semibold text-white mb-3">Quick Create</h2>
+        <div className="flex gap-3">
+          <input
+            value={prompt}
+            onChange={(e) => setPrompt(e.target.value)}
+            placeholder="Describe your scene..."
+            className="flex-1 bg-[#0D0920] border border-purple-500/30 text-white rounded-lg px-3 py-2 focus:outline-none focus:border-purple-500 placeholder-gray-600"
+          />
+          <Link
+            href={`/dashboard/create${prompt ? `?prompt=${encodeURIComponent(prompt)}` : ""}`}
+            className="bg-purple-600 hover:bg-purple-700 text-white px-5 py-2 rounded-lg font-semibold transition whitespace-nowrap"
+          >
+            Generate
           </Link>
         </div>
-        <div className="divide-y divide-gray-50">
-          {recentPapers.length === 0 ? (
-            <div className="p-8 text-center text-gray-400">
-              <FileText className="w-12 h-12 mx-auto mb-3 text-gray-200" />
-              <p>No papers yet. Create your first one!</p>
-            </div>
-          ) : (
-            recentPapers.map((paper) => (
-              <div key={paper.id} className="p-4 flex items-center justify-between hover:bg-gray-50 transition">
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 bg-indigo-100 rounded-lg flex items-center justify-center">
-                    <FileText className="w-4 h-4 text-indigo-600" />
-                  </div>
-                  <div>
-                    <div className="font-medium text-gray-900 text-sm">{paper.title}</div>
-                    <div className="text-xs text-gray-400">{paper.board} · Class {paper.class} · {paper.totalMarks} marks</div>
+      </div>
+
+      {/* Recent creations */}
+      <div>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-semibold text-white">Recent Creations</h2>
+          <Link href="/dashboard/gallery" className="text-sm text-purple-400 hover:text-purple-300">View All</Link>
+        </div>
+        {recent.length === 0 ? (
+          <div className="rounded-xl border border-purple-500/20 bg-[#1A1030] p-10 text-center text-gray-500">
+            No videos yet. Create your first one above!
+          </div>
+        ) : (
+          <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-4">
+            {recent.map((v) => (
+              <div key={v.id} className="rounded-xl border border-purple-500/20 bg-[#1A1030] overflow-hidden">
+                <div className={`h-36 bg-gradient-to-br ${v.thumbnailColor} flex items-center justify-center`}>
+                  <div className="w-12 h-12 rounded-full bg-black/30 flex items-center justify-center">
+                    <span className="text-white text-xl">▶</span>
                   </div>
                 </div>
-                <div className="flex items-center gap-3">
-                  <span className={`text-xs font-medium px-2 py-1 rounded-full ${paper.status === "published" ? "bg-green-100 text-green-700" : "bg-orange-100 text-orange-700"}`}>
-                    {paper.status}
-                  </span>
-                  <span className="text-xs text-gray-400">{paper.createdAt}</span>
+                <div className="p-3">
+                  <div className="font-semibold text-white text-sm truncate">{v.title}</div>
+                  <div className="flex items-center gap-2 mt-1">
+                    <span className="text-xs text-gray-400">{v.createdAt}</span>
+                    <span className="text-xs bg-purple-600/20 text-purple-300 px-2 py-0.5 rounded">{v.duration}s</span>
+                  </div>
                 </div>
               </div>
-            ))
-          )}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
+
+      {/* Upgrade banner */}
+      {user?.plan === "starter" && (
+        <div className="rounded-xl border border-purple-500/30 bg-gradient-to-r from-purple-900/40 to-pink-900/30 p-6 flex items-center justify-between flex-wrap gap-4">
+          <div>
+            <p className="font-semibold text-white">Upgrade to Pro</p>
+            <p className="text-gray-400 text-sm">Unlock 60s videos, AI voice, 5 character slots, and community access.</p>
+          </div>
+          <Link href="/dashboard/billing" className="bg-purple-600 hover:bg-purple-700 text-white px-5 py-2.5 rounded-lg font-semibold transition">
+            Upgrade Now
+          </Link>
+        </div>
+      )}
     </div>
   );
 }

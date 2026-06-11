@@ -1,114 +1,106 @@
 "use client";
+
 import { useState } from "react";
 import { useAppStore } from "@/lib/store";
-import { Users, Plus, Trash2, BarChart3, FileText, Settings, UserCheck, Shield, Mail } from "lucide-react";
+import { Shield, Users, BarChart2, AlertTriangle, Settings } from "lucide-react";
+import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
+
+const MOCK_USERS = [
+  { id: "u1", name: "Alex Morgan", email: "demo@example.com", plan: "Pro", status: "Active", joined: "2026-05-01" },
+  { id: "u2", name: "Sam Lee", email: "starter@example.com", plan: "Starter", status: "Active", joined: "2026-05-15" },
+  { id: "u3", name: "Admin User", email: "admin@example.com", plan: "Admin", status: "Active", joined: "2026-01-01" },
+  { id: "u4", name: "Jordan Blake", email: "jordan@example.com", plan: "Pro", status: "Trial", joined: "2026-06-01" },
+  { id: "u5", name: "Riley Chen", email: "riley@example.com", plan: "Starter", status: "Suspended", joined: "2026-04-20" },
+];
+
+const CHART_DATA = [
+  { day: "Jun 5", videos: 24 },
+  { day: "Jun 6", videos: 38 },
+  { day: "Jun 7", videos: 31 },
+  { day: "Jun 8", videos: 55 },
+  { day: "Jun 9", videos: 47 },
+  { day: "Jun 10", videos: 62 },
+  { day: "Jun 11", videos: 58 },
+];
+
+const FLAGGED = [
+  { id: "f1", type: "Policy Violation", description: "Flagged for review: content_v99", reporter: "AutoMod", date: "2026-06-10" },
+  { id: "f2", type: "User Report", description: "User reported community post", reporter: "u4", date: "2026-06-11" },
+];
+
+const ADMIN_TABS = ["Users", "Analytics", "Moderation", "Settings"];
 
 export default function AdminPage() {
-  const { teachers, papers, addTeacher, removeTeacher, user } = useAppStore();
-  const [tab, setTab] = useState<"users" | "analytics" | "settings">("users");
-  const [showAdd, setShowAdd] = useState(false);
-  const [newTeacher, setNewTeacher] = useState({ name: "", email: "", role: "teacher" });
+  const { user } = useAppStore();
+  const [tab, setTab] = useState("Users");
+  const [maintenance, setMaintenance] = useState(false);
+  const [ageGateRequired, setAgeGateRequired] = useState(true);
 
-  const handleAdd = () => {
-    if (!newTeacher.name || !newTeacher.email) return;
-    addTeacher({ id: "t_" + Date.now(), ...newTeacher, addedAt: new Date().toISOString().split("T")[0] });
-    setNewTeacher({ name: "", email: "", role: "teacher" });
-    setShowAdd(false);
-  };
+  if (!user?.isAdmin) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] text-center">
+        <Shield className="w-16 h-16 text-red-500 mb-4" />
+        <h2 className="text-2xl font-bold text-white mb-2">Access Denied</h2>
+        <p className="text-gray-400">You do not have permission to access the admin dashboard.</p>
+      </div>
+    );
+  }
 
-  const boardDist = papers.reduce((acc, p) => { acc[p.board] = (acc[p.board] || 0) + 1; return acc; }, {} as Record<string, number>);
-  const subjectDist = papers.reduce((acc, p) => { acc[p.subject] = (acc[p.subject] || 0) + 1; return acc; }, {} as Record<string, number>);
+  function Toggle({ checked, onChange }: { checked: boolean; onChange: () => void }) {
+    return (
+      <button onClick={onChange} className={`relative w-11 h-6 rounded-full transition-colors ${checked ? "bg-purple-600" : "bg-gray-700"}`}>
+        <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white transition-transform ${checked ? "translate-x-5" : ""}`} />
+      </button>
+    );
+  }
 
   return (
-    <div className="p-8">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Admin Dashboard</h1>
-        <p className="text-gray-500 mt-1">Manage your team, view analytics, and configure institute settings.</p>
+    <div className="max-w-5xl mx-auto space-y-6">
+      <div className="flex items-center gap-3">
+        <Shield className="w-7 h-7 text-purple-400" />
+        <div>
+          <h1 className="text-3xl font-bold text-white">Admin Dashboard</h1>
+          <p className="text-gray-400 text-sm">Manage users, content, and platform settings.</p>
+        </div>
       </div>
 
-      {/* Tabs */}
-      <div className="flex gap-2 mb-6 border-b border-gray-100">
-        {[
-          { key: "users", label: "User Management", icon: Users },
-          { key: "analytics", label: "Analytics", icon: BarChart3 },
-          { key: "settings", label: "Settings", icon: Settings },
-        ].map(({ key, label, icon: Icon }) => (
-          <button key={key} onClick={() => setTab(key as typeof tab)}
-            className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 transition -mb-px ${tab === key ? "border-indigo-600 text-indigo-600" : "border-transparent text-gray-500 hover:text-gray-700"}`}>
-            <Icon className="w-4 h-4" />
-            {label}
+      <div className="flex gap-2">
+        {ADMIN_TABS.map((t) => (
+          <button key={t} onClick={() => setTab(t)}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${tab === t ? "bg-purple-600 text-white" : "bg-[#1A1030] text-gray-400 hover:text-white border border-purple-900/40"}`}>
+            {t}
           </button>
         ))}
       </div>
 
-      {/* User Management */}
-      {tab === "users" && (
-        <div>
-          <div className="flex items-center justify-between mb-4">
-            <div className="text-sm text-gray-500">{teachers.length} members in your institute</div>
-            <button onClick={() => setShowAdd(true)}
-              className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium px-4 py-2 rounded-xl transition">
-              <Plus className="w-4 h-4" />
-              Add Teacher
-            </button>
-          </div>
-
-          {showAdd && (
-            <div className="bg-indigo-50 border border-indigo-100 rounded-2xl p-5 mb-4">
-              <h3 className="font-semibold text-gray-900 mb-3">Add New Teacher</h3>
-              <div className="grid sm:grid-cols-3 gap-3">
-                <input type="text" placeholder="Full Name" value={newTeacher.name}
-                  onChange={(e) => setNewTeacher({ ...newTeacher, name: e.target.value })}
-                  className="px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
-                <input type="email" placeholder="Email" value={newTeacher.email}
-                  onChange={(e) => setNewTeacher({ ...newTeacher, email: e.target.value })}
-                  className="px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
-                <select value={newTeacher.role} onChange={(e) => setNewTeacher({ ...newTeacher, role: e.target.value })}
-                  className="px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                  <option value="teacher">Teacher</option>
-                  <option value="admin">Admin</option>
-                </select>
-              </div>
-              <div className="flex gap-3 mt-3">
-                <button onClick={handleAdd} className="bg-indigo-600 text-white text-sm font-medium px-4 py-2 rounded-lg">Add Teacher</button>
-                <button onClick={() => setShowAdd(false)} className="text-sm text-gray-500 px-4 py-2">Cancel</button>
-              </div>
-            </div>
-          )}
-
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-            <table className="w-full">
-              <thead className="bg-gray-50 border-b border-gray-100">
-                <tr>
-                  {["Name", "Email", "Role", "Added", "Actions"].map((h) => (
-                    <th key={h} className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wide px-4 py-3">{h}</th>
+      {tab === "Users" && (
+        <div className="glass-card p-6">
+          <h2 className="font-bold text-white mb-4 flex items-center gap-2"><Users className="w-5 h-5 text-purple-400" /> All Users ({MOCK_USERS.length})</h2>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-purple-900/30">
+                  {["Name", "Email", "Plan", "Status", "Joined"].map((h) => (
+                    <th key={h} className="text-left text-gray-400 font-medium py-2 pr-4">{h}</th>
                   ))}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-50">
-                {teachers.map((t) => (
-                  <tr key={t.id} className="hover:bg-gray-50">
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 bg-indigo-600 rounded-full flex items-center justify-center text-white text-sm font-bold">
-                          {t.name[0]}
-                        </div>
-                        <span className="font-medium text-sm text-gray-900">{t.name}</span>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 text-sm text-gray-500">{t.email}</td>
-                    <td className="px-4 py-3">
-                      <span className={`text-xs font-medium px-2 py-1 rounded-full ${t.role === "admin" ? "bg-purple-100 text-purple-700" : "bg-gray-100 text-gray-600"}`}>
-                        {t.role}
+              <tbody>
+                {MOCK_USERS.map((u) => (
+                  <tr key={u.id} className="border-b border-purple-900/20 hover:bg-purple-900/10">
+                    <td className="py-3 pr-4 text-white font-medium">{u.name}</td>
+                    <td className="py-3 pr-4 text-gray-400">{u.email}</td>
+                    <td className="py-3 pr-4">
+                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${u.plan === "Pro" ? "bg-purple-900/40 text-purple-300" : u.plan === "Admin" ? "bg-red-900/40 text-red-300" : "bg-gray-800 text-gray-300"}`}>
+                        {u.plan}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-xs text-gray-400">{t.addedAt}</td>
-                    <td className="px-4 py-3">
-                      <button onClick={() => removeTeacher(t.id)}
-                        className="w-7 h-7 rounded-lg bg-gray-100 hover:bg-red-100 flex items-center justify-center transition">
-                        <Trash2 className="w-3.5 h-3.5 text-red-400" />
-                      </button>
+                    <td className="py-3 pr-4">
+                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${u.status === "Active" ? "bg-green-900/30 text-green-400" : u.status === "Suspended" ? "bg-red-900/30 text-red-400" : "bg-yellow-900/30 text-yellow-400"}`}>
+                        {u.status}
+                      </span>
                     </td>
+                    <td className="py-3 text-gray-500">{u.joined}</td>
                   </tr>
                 ))}
               </tbody>
@@ -117,101 +109,83 @@ export default function AdminPage() {
         </div>
       )}
 
-      {/* Analytics */}
-      {tab === "analytics" && (
-        <div>
-          <div className="grid sm:grid-cols-3 gap-4 mb-6">
+      {tab === "Analytics" && (
+        <div className="space-y-5">
+          <div className="grid grid-cols-4 gap-4">
             {[
-              { label: "Total Papers", value: papers.length, icon: FileText, color: "bg-indigo-500" },
-              { label: "Team Members", value: teachers.length, icon: Users, color: "bg-purple-500" },
-              { label: "Published Papers", value: papers.filter((p) => p.status === "published").length, icon: UserCheck, color: "bg-green-500" },
-            ].map(({ label, value, icon: Icon, color }) => (
-              <div key={label} className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
-                <div className={`w-10 h-10 ${color} rounded-xl flex items-center justify-center mb-3`}>
-                  <Icon className="w-5 h-5 text-white" />
-                </div>
-                <div className="text-3xl font-bold text-gray-900">{value}</div>
-                <div className="text-sm text-gray-500">{label}</div>
+              { label: "Total Users", value: "1,284" },
+              { label: "Videos Generated", value: "18,392" },
+              { label: "Active Today", value: "247" },
+              { label: "Revenue MTD", value: "$12,450" },
+            ].map((s) => (
+              <div key={s.label} className="glass-card p-5">
+                <p className="text-2xl font-bold text-white">{s.value}</p>
+                <p className="text-xs text-gray-400 mt-1">{s.label}</p>
               </div>
             ))}
           </div>
-
-          <div className="grid md:grid-cols-2 gap-6">
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-              <h3 className="font-bold text-gray-900 mb-4">Papers by Board</h3>
-              <div className="space-y-3">
-                {Object.entries(boardDist).map(([board, count]) => (
-                  <div key={board} className="flex items-center gap-3">
-                    <span className="text-sm text-gray-600 w-20 shrink-0">{board}</span>
-                    <div className="flex-1 bg-gray-100 rounded-full h-2">
-                      <div className="bg-indigo-500 h-2 rounded-full" style={{ width: `${(count / papers.length) * 100}%` }} />
-                    </div>
-                    <span className="text-sm text-gray-500 w-6">{count}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-              <h3 className="font-bold text-gray-900 mb-4">Papers by Subject</h3>
-              <div className="space-y-3">
-                {Object.entries(subjectDist).map(([subj, count]) => (
-                  <div key={subj} className="flex items-center gap-3">
-                    <span className="text-sm text-gray-600 w-32 shrink-0 truncate">{subj}</span>
-                    <div className="flex-1 bg-gray-100 rounded-full h-2">
-                      <div className="bg-purple-500 h-2 rounded-full" style={{ width: `${(count / papers.length) * 100}%` }} />
-                    </div>
-                    <span className="text-sm text-gray-500 w-6">{count}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
+          <div className="glass-card p-6">
+            <h3 className="font-bold text-white mb-4 flex items-center gap-2"><BarChart2 className="w-4 h-4 text-purple-400" /> Videos Generated (Last 7 Days)</h3>
+            <ResponsiveContainer width="100%" height={200}>
+              <LineChart data={CHART_DATA}>
+                <XAxis dataKey="day" tick={{ fill: "#6B7280", fontSize: 12 }} />
+                <YAxis tick={{ fill: "#6B7280", fontSize: 12 }} />
+                <Tooltip contentStyle={{ backgroundColor: "#0D0820", border: "1px solid #581c87", borderRadius: "8px", color: "#fff" }} />
+                <Line type="monotone" dataKey="videos" stroke="#7C3AED" strokeWidth={2} dot={{ fill: "#7C3AED" }} />
+              </LineChart>
+            </ResponsiveContainer>
           </div>
         </div>
       )}
 
-      {/* Settings */}
-      {tab === "settings" && (
-        <div className="max-w-2xl space-y-6">
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-            <h3 className="font-bold text-gray-900 mb-4 flex items-center gap-2"><Settings className="w-4 h-4 text-indigo-600" />Institute Settings</h3>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Institute Name</label>
-                <input type="text" defaultValue={user?.schoolName}
-                  className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500" />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Contact Email</label>
-                <input type="email" defaultValue={user?.email}
-                  className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500" />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Default Board</label>
-                <select className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                  <option>CBSE</option><option>ICSE</option><option>State Board</option>
-                </select>
-              </div>
-              <div className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
-                <div>
-                  <div className="font-medium text-sm text-gray-900">Allow teacher self-signup</div>
-                  <div className="text-xs text-gray-400">Teachers can create accounts under your institute</div>
+      {tab === "Moderation" && (
+        <div className="glass-card p-6">
+          <h2 className="font-bold text-white mb-4 flex items-center gap-2"><AlertTriangle className="w-5 h-5 text-yellow-400" /> Moderation Queue ({FLAGGED.length})</h2>
+          {FLAGGED.length === 0 ? (
+            <p className="text-gray-400 text-sm">No items in moderation queue.</p>
+          ) : (
+            <div className="space-y-3">
+              {FLAGGED.map((item) => (
+                <div key={item.id} className="p-4 rounded-xl bg-[#1A1030] border border-yellow-900/30 flex items-center justify-between gap-4">
+                  <div>
+                    <p className="font-medium text-white text-sm">{item.type}</p>
+                    <p className="text-xs text-gray-400">{item.description}</p>
+                    <p className="text-xs text-gray-600 mt-1">Reported by {item.reporter} · {item.date}</p>
+                  </div>
+                  <div className="flex gap-2 flex-shrink-0">
+                    <button className="px-3 py-1 rounded-lg bg-green-900/30 text-green-400 text-xs hover:bg-green-900/50 transition-colors">Approve</button>
+                    <button className="px-3 py-1 rounded-lg bg-red-900/30 text-red-400 text-xs hover:bg-red-900/50 transition-colors">Remove</button>
+                  </div>
                 </div>
-                <label className="relative inline-flex items-center cursor-pointer">
-                  <input type="checkbox" defaultChecked className="sr-only peer" />
-                  <div className="w-9 h-5 bg-gray-200 peer-focus:ring-2 peer-focus:ring-indigo-500 rounded-full peer peer-checked:after:translate-x-full peer-checked:bg-indigo-600 after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:w-4 after:h-4 after:rounded-full after:transition"></div>
-                </label>
-              </div>
+              ))}
             </div>
-            <button className="mt-4 bg-indigo-600 hover:bg-indigo-700 text-white font-medium px-6 py-2.5 rounded-xl transition">Save Settings</button>
-          </div>
+          )}
+        </div>
+      )}
 
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-            <h3 className="font-bold text-gray-900 mb-4 flex items-center gap-2"><Shield className="w-4 h-4 text-red-500" />Danger Zone</h3>
-            <div className="border border-red-200 rounded-xl p-4">
-              <div className="font-medium text-sm text-gray-900">Delete Institute Account</div>
-              <div className="text-xs text-gray-400 mt-1 mb-3">This will permanently delete all papers, question banks, and team data.</div>
-              <button className="bg-red-50 hover:bg-red-100 text-red-600 text-sm font-medium px-4 py-2 rounded-lg transition">Delete Account</button>
+      {tab === "Settings" && (
+        <div className="glass-card p-6 space-y-5">
+          <h2 className="font-bold text-white flex items-center gap-2"><Settings className="w-5 h-5 text-purple-400" /> Platform Settings</h2>
+          <div className="flex items-center justify-between py-3 border-b border-purple-900/20">
+            <div>
+              <p className="text-sm font-medium text-white">Maintenance Mode</p>
+              <p className="text-xs text-gray-400">Temporarily disable the platform for all users</p>
             </div>
+            <Toggle checked={maintenance} onChange={() => setMaintenance(!maintenance)} />
+          </div>
+          <div className="flex items-center justify-between py-3 border-b border-purple-900/20">
+            <div>
+              <p className="text-sm font-medium text-white">Age Gate Required</p>
+              <p className="text-xs text-gray-400">Show age verification modal on landing page</p>
+            </div>
+            <Toggle checked={ageGateRequired} onChange={() => setAgeGateRequired(!ageGateRequired)} />
+          </div>
+          <div className="flex items-center justify-between py-3">
+            <div>
+              <p className="text-sm font-medium text-white">Community Feed</p>
+              <p className="text-xs text-gray-400">Enable the community sharing feature platform-wide</p>
+            </div>
+            <Toggle checked={true} onChange={() => {}} />
           </div>
         </div>
       )}
