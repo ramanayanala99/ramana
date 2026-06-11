@@ -55,7 +55,7 @@ interface VideoResult {
 }
 
 export default function CreatePage() {
-  const { user, isGenerating, generateVideo, addCharacter } = useAppStore();
+  const { user, isGenerating, generateVideo, addCharacter, videos } = useAppStore();
   const [prompt, setPrompt] = useState("");
   const [duration, setDuration] = useState(15);
   const [style, setStyle] = useState("Realistic");
@@ -67,6 +67,7 @@ export default function CreatePage() {
   const [charB, setCharB] = useState<CharConfig>({ ...defaultChar(), gender: "Male" });
   const [progress, setProgress] = useState(0);
   const [lastVideo, setLastVideo] = useState<VideoResult | null>(null);
+  const [savedToGallery, setSavedToGallery] = useState(false);
 
   const isPro = user?.plan === "pro" || user?.plan === "admin";
 
@@ -77,11 +78,11 @@ export default function CreatePage() {
       interval = setInterval(() => {
         setProgress((p) => Math.min(p + 3, 95));
       }, 90);
-    } else {
-      setProgress(0);
+    } else if (lastVideo) {
+      setProgress(100);
     }
     return () => clearInterval(interval);
-  }, [isGenerating]);
+  }, [isGenerating, lastVideo]);
 
   const currentChar = activeChar === 0 ? charA : charB;
 
@@ -104,6 +105,7 @@ export default function CreatePage() {
       characters: [charA.name || "Character A", charB.name || "Character B"],
     });
     setLastVideo(video);
+    setSavedToGallery(false);
     setProgress(100);
   }
 
@@ -367,8 +369,11 @@ export default function CreatePage() {
             <div className="text-sm text-gray-400 mt-1">{lastVideo.prompt}</div>
           </div>
           <div className="flex gap-3 flex-wrap">
-            <button className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg text-sm transition-colors">
-              <Save className="w-4 h-4" />Save
+            <button
+              onClick={() => { if (lastVideo) { setSavedToGallery(true); } }}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm transition-colors ${savedToGallery ? "bg-green-600 text-white" : "bg-purple-600 hover:bg-purple-700 text-white"}`}
+            >
+              <Save className="w-4 h-4" />{savedToGallery ? "Saved to Gallery ✓" : "Save to Gallery"}
             </button>
             <button className="flex items-center gap-2 border border-purple-500/30 hover:bg-purple-500/10 text-gray-300 px-4 py-2 rounded-lg text-sm transition-colors">
               <Download className="w-4 h-4" />Download
