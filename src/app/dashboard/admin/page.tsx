@@ -2,191 +2,225 @@
 
 import { useState } from "react";
 import { useAppStore } from "@/lib/store";
-import { Shield, Users, BarChart2, AlertTriangle, Settings } from "lucide-react";
-import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
 
 const MOCK_USERS = [
-  { id: "u1", name: "Alex Morgan", email: "demo@example.com", plan: "Pro", status: "Active", joined: "2026-05-01" },
-  { id: "u2", name: "Sam Lee", email: "starter@example.com", plan: "Starter", status: "Active", joined: "2026-05-15" },
-  { id: "u3", name: "Admin User", email: "admin@example.com", plan: "Admin", status: "Active", joined: "2026-01-01" },
-  { id: "u4", name: "Jordan Blake", email: "jordan@example.com", plan: "Pro", status: "Trial", joined: "2026-06-01" },
-  { id: "u5", name: "Riley Chen", email: "riley@example.com", plan: "Starter", status: "Suspended", joined: "2026-04-20" },
+  { id: "u1", username: "alexmorgan", email: "demo@example.com", plan: "Pro", status: "Active", joined: "2026-01-10" },
+  { id: "u2", username: "samlee", email: "starter@example.com", plan: "Starter", status: "Active", joined: "2026-02-03" },
+  { id: "u3", username: "admin", email: "admin@example.com", plan: "Admin", status: "Active", joined: "2025-12-01" },
+  { id: "u4", username: "user_4821", email: "user4821@example.com", plan: "Pro", status: "Active", joined: "2026-03-15" },
+  { id: "u5", username: "creative_99", email: "c99@example.com", plan: "Starter", status: "Suspended", joined: "2026-04-01" },
+  { id: "u6", username: "anon_5512", email: "anon@example.com", plan: "Starter", status: "Active", joined: "2026-04-20" },
+  { id: "u7", username: "user_2271", email: "u2271@example.com", plan: "Pro", status: "Active", joined: "2026-05-02" },
+  { id: "u8", username: "newuser_1", email: "new1@example.com", plan: "Starter", status: "Trial", joined: "2026-06-01" },
+  { id: "u9", username: "newuser_2", email: "new2@example.com", plan: "Pro", status: "Trial", joined: "2026-06-05" },
+  { id: "u10", username: "poweruser", email: "power@example.com", plan: "Pro", status: "Active", joined: "2026-02-28" },
 ];
 
-const CHART_DATA = [
-  { day: "Jun 5", videos: 24 },
-  { day: "Jun 6", videos: 38 },
-  { day: "Jun 7", videos: 31 },
-  { day: "Jun 8", videos: 55 },
-  { day: "Jun 9", videos: 47 },
-  { day: "Jun 10", videos: 62 },
-  { day: "Jun 11", videos: 58 },
+const FLAGGED_CONTENT = [
+  { id: "fc1", user: "user_4821", title: "Scene 44", reason: "Community report", date: "2026-06-10" },
+  { id: "fc2", user: "anon_5512", title: "Night Video", reason: "Auto-flagged", date: "2026-06-09" },
+  { id: "fc3", user: "newuser_1", title: "Test Scene", reason: "Community report", date: "2026-06-11" },
 ];
 
-const FLAGGED = [
-  { id: "f1", type: "Policy Violation", description: "Flagged for review: content_v99", reporter: "AutoMod", date: "2026-06-10" },
-  { id: "f2", type: "User Report", description: "User reported community post", reporter: "u4", date: "2026-06-11" },
+const ANALYTICS = [
+  { label: "Total Users", value: "10" },
+  { label: "Active Subscriptions", value: "7" },
+  { label: "Videos Generated Today", value: "42" },
+  { label: "Total Revenue", value: "$1,240" },
 ];
 
-const ADMIN_TABS = ["Users", "Analytics", "Moderation", "Settings"];
+const BAR_DATA = [
+  { label: "Mon", val: 30 }, { label: "Tue", val: 50 }, { label: "Wed", val: 42 },
+  { label: "Thu", val: 68 }, { label: "Fri", val: 55 }, { label: "Sat", val: 80 }, { label: "Sun", val: 35 },
+];
 
 export default function AdminPage() {
   const { user } = useAppStore();
-  const [tab, setTab] = useState("Users");
-  const [maintenance, setMaintenance] = useState(false);
-  const [ageGateRequired, setAgeGateRequired] = useState(true);
+  const [activeTab, setActiveTab] = useState<"users" | "analytics" | "moderation" | "system">("users");
+  const [search, setSearch] = useState("");
+  const [system, setSystem] = useState({ maintenance: false, registrations: true, community: true, moderation: true });
 
   if (!user?.isAdmin) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] text-center">
-        <Shield className="w-16 h-16 text-red-500 mb-4" />
-        <h2 className="text-2xl font-bold text-white mb-2">Access Denied</h2>
-        <p className="text-gray-400">You do not have permission to access the admin dashboard.</p>
-      </div>
-    );
-  }
-
-  function Toggle({ checked, onChange }: { checked: boolean; onChange: () => void }) {
-    return (
-      <button onClick={onChange} className={`relative w-11 h-6 rounded-full transition-colors ${checked ? "bg-purple-600" : "bg-gray-700"}`}>
-        <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white transition-transform ${checked ? "translate-x-5" : ""}`} />
-      </button>
-    );
-  }
-
-  return (
-    <div className="max-w-5xl mx-auto space-y-6">
-      <div className="flex items-center gap-3">
-        <Shield className="w-7 h-7 text-purple-400" />
-        <div>
-          <h1 className="text-3xl font-bold text-white">Admin Dashboard</h1>
-          <p className="text-gray-400 text-sm">Manage users, content, and platform settings.</p>
+      <div className="min-h-full flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-5xl mb-4">🚫</div>
+          <h1 className="text-2xl font-bold text-white mb-2">Access Denied</h1>
+          <p className="text-gray-400">You do not have admin privileges.</p>
         </div>
       </div>
+    );
+  }
 
-      <div className="flex gap-2">
-        {ADMIN_TABS.map((t) => (
-          <button key={t} onClick={() => setTab(t)}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${tab === t ? "bg-purple-600 text-white" : "bg-[#1A1030] text-gray-400 hover:text-white border border-purple-900/40"}`}>
-            {t}
+  const filteredUsers = MOCK_USERS.filter((u) =>
+    u.username.toLowerCase().includes(search.toLowerCase()) ||
+    u.email.toLowerCase().includes(search.toLowerCase())
+  );
+
+  const TABS = [
+    { key: "users" as const, label: "Users" },
+    { key: "analytics" as const, label: "Analytics" },
+    { key: "moderation" as const, label: "Moderation" },
+    { key: "system" as const, label: "System Settings" },
+  ];
+
+  return (
+    <div className="max-w-6xl mx-auto space-y-6">
+      <div className="flex items-center gap-3">
+        <h1 className="text-2xl font-bold text-white">Admin Panel</h1>
+        <span className="text-xs bg-red-500/20 text-red-400 border border-red-500/30 px-2 py-1 rounded">Admin Only</span>
+      </div>
+
+      <div className="flex gap-1 border-b border-purple-500/20 flex-wrap">
+        {TABS.map((tab) => (
+          <button key={tab.key} onClick={() => setActiveTab(tab.key)}
+            className={`px-4 py-2 text-sm font-medium border-b-2 transition -mb-px ${activeTab === tab.key ? "border-purple-500 text-purple-300" : "border-transparent text-gray-400 hover:text-white"}`}>
+            {tab.label}
           </button>
         ))}
       </div>
 
-      {tab === "Users" && (
-        <div className="glass-card p-6">
-          <h2 className="font-bold text-white mb-4 flex items-center gap-2"><Users className="w-5 h-5 text-purple-400" /> All Users ({MOCK_USERS.length})</h2>
-          <div className="overflow-x-auto">
+      {/* Users */}
+      {activeTab === "users" && (
+        <div className="space-y-4">
+          <input value={search} onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search users..."
+            className="bg-[#0D0920] border border-purple-500/30 text-white rounded-lg px-3 py-2 w-full max-w-sm text-sm focus:outline-none placeholder-gray-600" />
+          <div className="rounded-xl border border-purple-500/20 bg-[#1A1030] overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-[#0D0920]">
+                  <tr className="text-gray-400">
+                    {["Username", "Email", "Plan", "Status", "Joined", "Actions"].map((h) => (
+                      <th key={h} className="text-left px-4 py-3">{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredUsers.map((u) => (
+                    <tr key={u.id} className="border-t border-purple-500/10 text-gray-300 hover:bg-white/5">
+                      <td className="px-4 py-3 font-medium">{u.username}</td>
+                      <td className="px-4 py-3">{u.email}</td>
+                      <td className="px-4 py-3">
+                        <span className={`text-xs px-2 py-0.5 rounded ${u.plan === "Pro" ? "bg-amber-400/20 text-amber-300" : u.plan === "Admin" ? "bg-red-500/20 text-red-400" : "bg-purple-600/20 text-purple-300"}`}>
+                          {u.plan}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className={`text-xs ${u.status === "Active" ? "text-green-400" : u.status === "Trial" ? "text-amber-400" : "text-red-400"}`}>
+                          {u.status}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-gray-500">{u.joined}</td>
+                      <td className="px-4 py-3">
+                        <div className="flex gap-1">
+                          <button className="text-xs bg-amber-500/20 text-amber-300 hover:bg-amber-500/30 px-2 py-1 rounded transition">Suspend</button>
+                          <button className="text-xs bg-red-500/20 text-red-400 hover:bg-red-500/30 px-2 py-1 rounded transition">Delete</button>
+                          {u.plan !== "Pro" && <button className="text-xs bg-purple-600/20 text-purple-300 hover:bg-purple-600/30 px-2 py-1 rounded transition">→ Pro</button>}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Analytics */}
+      {activeTab === "analytics" && (
+        <div className="space-y-6">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {ANALYTICS.map((a) => (
+              <div key={a.label} className="rounded-xl border border-purple-500/20 bg-[#1A1030] p-5">
+                <div className="text-2xl font-bold text-white">{a.value}</div>
+                <div className="text-xs text-gray-400 mt-1">{a.label}</div>
+              </div>
+            ))}
+          </div>
+          <div className="rounded-xl border border-purple-500/20 bg-[#1A1030] p-6">
+            <h3 className="font-semibold text-white mb-4">Videos Generated This Week</h3>
+            <div className="flex items-end gap-2 h-32">
+              {BAR_DATA.map((d) => (
+                <div key={d.label} className="flex-1 flex flex-col items-center gap-1">
+                  <div className="w-full bg-purple-600/70 rounded-t" style={{ height: `${(d.val / 80) * 100}%` }} />
+                  <span className="text-xs text-gray-500">{d.label}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Moderation */}
+      {activeTab === "moderation" && (
+        <div className="space-y-4">
+          <div className="rounded-xl border border-purple-500/20 bg-[#1A1030] overflow-hidden">
+            <div className="p-4 border-b border-purple-500/20">
+              <h3 className="font-semibold text-white">Flagged Content</h3>
+            </div>
             <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-purple-900/30">
-                  {["Name", "Email", "Plan", "Status", "Joined"].map((h) => (
-                    <th key={h} className="text-left text-gray-400 font-medium py-2 pr-4">{h}</th>
+              <thead className="bg-[#0D0920]">
+                <tr className="text-gray-400">
+                  {["User", "Title", "Reason", "Date", "Actions"].map((h) => (
+                    <th key={h} className="text-left px-4 py-3">{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
-                {MOCK_USERS.map((u) => (
-                  <tr key={u.id} className="border-b border-purple-900/20 hover:bg-purple-900/10">
-                    <td className="py-3 pr-4 text-white font-medium">{u.name}</td>
-                    <td className="py-3 pr-4 text-gray-400">{u.email}</td>
-                    <td className="py-3 pr-4">
-                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${u.plan === "Pro" ? "bg-purple-900/40 text-purple-300" : u.plan === "Admin" ? "bg-red-900/40 text-red-300" : "bg-gray-800 text-gray-300"}`}>
-                        {u.plan}
-                      </span>
+                {FLAGGED_CONTENT.map((fc) => (
+                  <tr key={fc.id} className="border-t border-purple-500/10 text-gray-300">
+                    <td className="px-4 py-3">{fc.user}</td>
+                    <td className="px-4 py-3">{fc.title}</td>
+                    <td className="px-4 py-3 text-amber-400">{fc.reason}</td>
+                    <td className="px-4 py-3 text-gray-500">{fc.date}</td>
+                    <td className="px-4 py-3">
+                      <div className="flex gap-2">
+                        <button className="text-xs bg-green-500/20 text-green-400 hover:bg-green-500/30 px-2 py-1 rounded transition">Approve</button>
+                        <button className="text-xs bg-red-500/20 text-red-400 hover:bg-red-500/30 px-2 py-1 rounded transition">Reject</button>
+                      </div>
                     </td>
-                    <td className="py-3 pr-4">
-                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${u.status === "Active" ? "bg-green-900/30 text-green-400" : u.status === "Suspended" ? "bg-red-900/30 text-red-400" : "bg-yellow-900/30 text-yellow-400"}`}>
-                        {u.status}
-                      </span>
-                    </td>
-                    <td className="py-3 text-gray-500">{u.joined}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
+          <div className="rounded-xl border border-purple-500/20 bg-[#1A1030] p-5">
+            <h3 className="font-semibold text-white mb-3">Content Guidelines</h3>
+            <ul className="space-y-2 text-sm text-gray-400">
+              {[
+                "All characters must be visibly adult (18+) AI-generated only",
+                "No real-person likenesses permitted",
+                "No non-consensual depiction themes",
+                "Community content must be opted-in explicitly",
+                "Violating content is subject to immediate removal",
+              ].map((g) => <li key={g} className="flex items-start gap-2"><span className="text-purple-400 mt-0.5">•</span>{g}</li>)}
+            </ul>
+          </div>
         </div>
       )}
 
-      {tab === "Analytics" && (
-        <div className="space-y-5">
-          <div className="grid grid-cols-4 gap-4">
-            {[
-              { label: "Total Users", value: "1,284" },
-              { label: "Videos Generated", value: "18,392" },
-              { label: "Active Today", value: "247" },
-              { label: "Revenue MTD", value: "$12,450" },
-            ].map((s) => (
-              <div key={s.label} className="glass-card p-5">
-                <p className="text-2xl font-bold text-white">{s.value}</p>
-                <p className="text-xs text-gray-400 mt-1">{s.label}</p>
+      {/* System Settings */}
+      {activeTab === "system" && (
+        <div className="rounded-xl border border-purple-500/20 bg-[#1A1030] p-6 space-y-5">
+          {[
+            { key: "maintenance" as const, label: "Maintenance Mode", desc: "Take the platform offline for maintenance", danger: true },
+            { key: "registrations" as const, label: "New Registrations", desc: "Allow new users to sign up" },
+            { key: "community" as const, label: "Community Features", desc: "Enable community sharing and browsing" },
+            { key: "moderation" as const, label: "Content Moderation Required", desc: "Require manual review before community posts go live" },
+          ].map((item) => (
+            <div key={item.key} className="flex items-center justify-between">
+              <div>
+                <div className={`font-medium ${item.danger ? "text-red-400" : "text-white"}`}>{item.label}</div>
+                <div className="text-sm text-gray-400">{item.desc}</div>
               </div>
-            ))}
-          </div>
-          <div className="glass-card p-6">
-            <h3 className="font-bold text-white mb-4 flex items-center gap-2"><BarChart2 className="w-4 h-4 text-purple-400" /> Videos Generated (Last 7 Days)</h3>
-            <ResponsiveContainer width="100%" height={200}>
-              <LineChart data={CHART_DATA}>
-                <XAxis dataKey="day" tick={{ fill: "#6B7280", fontSize: 12 }} />
-                <YAxis tick={{ fill: "#6B7280", fontSize: 12 }} />
-                <Tooltip contentStyle={{ backgroundColor: "#0D0820", border: "1px solid #581c87", borderRadius: "8px", color: "#fff" }} />
-                <Line type="monotone" dataKey="videos" stroke="#7C3AED" strokeWidth={2} dot={{ fill: "#7C3AED" }} />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-      )}
-
-      {tab === "Moderation" && (
-        <div className="glass-card p-6">
-          <h2 className="font-bold text-white mb-4 flex items-center gap-2"><AlertTriangle className="w-5 h-5 text-yellow-400" /> Moderation Queue ({FLAGGED.length})</h2>
-          {FLAGGED.length === 0 ? (
-            <p className="text-gray-400 text-sm">No items in moderation queue.</p>
-          ) : (
-            <div className="space-y-3">
-              {FLAGGED.map((item) => (
-                <div key={item.id} className="p-4 rounded-xl bg-[#1A1030] border border-yellow-900/30 flex items-center justify-between gap-4">
-                  <div>
-                    <p className="font-medium text-white text-sm">{item.type}</p>
-                    <p className="text-xs text-gray-400">{item.description}</p>
-                    <p className="text-xs text-gray-600 mt-1">Reported by {item.reporter} · {item.date}</p>
-                  </div>
-                  <div className="flex gap-2 flex-shrink-0">
-                    <button className="px-3 py-1 rounded-lg bg-green-900/30 text-green-400 text-xs hover:bg-green-900/50 transition-colors">Approve</button>
-                    <button className="px-3 py-1 rounded-lg bg-red-900/30 text-red-400 text-xs hover:bg-red-900/50 transition-colors">Remove</button>
-                  </div>
-                </div>
-              ))}
+              <button onClick={() => setSystem({ ...system, [item.key]: !system[item.key] })}
+                className={`relative w-10 h-5 rounded-full transition-colors ${system[item.key] ? (item.danger ? "bg-red-600" : "bg-purple-600") : "bg-gray-700"}`}>
+                <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full transition-transform ${system[item.key] ? "translate-x-5" : "translate-x-0.5"}`} />
+              </button>
             </div>
-          )}
-        </div>
-      )}
-
-      {tab === "Settings" && (
-        <div className="glass-card p-6 space-y-5">
-          <h2 className="font-bold text-white flex items-center gap-2"><Settings className="w-5 h-5 text-purple-400" /> Platform Settings</h2>
-          <div className="flex items-center justify-between py-3 border-b border-purple-900/20">
-            <div>
-              <p className="text-sm font-medium text-white">Maintenance Mode</p>
-              <p className="text-xs text-gray-400">Temporarily disable the platform for all users</p>
-            </div>
-            <Toggle checked={maintenance} onChange={() => setMaintenance(!maintenance)} />
-          </div>
-          <div className="flex items-center justify-between py-3 border-b border-purple-900/20">
-            <div>
-              <p className="text-sm font-medium text-white">Age Gate Required</p>
-              <p className="text-xs text-gray-400">Show age verification modal on landing page</p>
-            </div>
-            <Toggle checked={ageGateRequired} onChange={() => setAgeGateRequired(!ageGateRequired)} />
-          </div>
-          <div className="flex items-center justify-between py-3">
-            <div>
-              <p className="text-sm font-medium text-white">Community Feed</p>
-              <p className="text-xs text-gray-400">Enable the community sharing feature platform-wide</p>
-            </div>
-            <Toggle checked={true} onChange={() => {}} />
-          </div>
+          ))}
         </div>
       )}
     </div>

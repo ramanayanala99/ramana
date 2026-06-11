@@ -2,120 +2,79 @@
 
 import { useState } from "react";
 import { useAppStore } from "@/lib/store";
-import { Plus, List, Play } from "lucide-react";
 
 export default function PlaylistsPage() {
-  const { playlists, videos, addPlaylist, addToPlaylist } = useAppStore();
+  const { playlists, videos, addPlaylist } = useAppStore();
   const [newName, setNewName] = useState("");
-  const [showForm, setShowForm] = useState(false);
-  const [selectedPlaylist, setSelectedPlaylist] = useState<string | null>(null);
-  const [addVideoId, setAddVideoId] = useState("");
+  const [selected, setSelected] = useState<string | null>(playlists[0]?.id ?? null);
 
-  function handleCreate(e: React.FormEvent) {
-    e.preventDefault();
-    if (!newName.trim()) return;
-    addPlaylist(newName.trim());
-    setNewName("");
-    setShowForm(false);
-  }
-
-  function handleAddVideo(e: React.FormEvent) {
-    e.preventDefault();
-    if (!selectedPlaylist || !addVideoId) return;
-    addToPlaylist(selectedPlaylist, addVideoId);
-    setAddVideoId("");
-  }
+  const selectedPlaylist = playlists.find((p) => p.id === selected);
+  const playlistVideos = selectedPlaylist
+    ? videos.filter((v) => selectedPlaylist.videoIds.includes(v.id))
+    : [];
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-white">Playlists</h1>
-          <p className="text-gray-400 text-sm mt-1">{playlists.length} playlists</p>
+    <div className="max-w-5xl mx-auto space-y-6">
+      <h1 className="text-2xl font-bold text-white">Playlists</h1>
+
+      <div className="flex gap-6">
+        {/* Sidebar */}
+        <div className="w-56 shrink-0">
+          <div className="rounded-xl border border-purple-500/20 bg-[#1A1030] p-4 space-y-2">
+            <div className="text-sm font-medium text-gray-400 mb-1">Your Playlists</div>
+            {playlists.map((pl) => (
+              <button key={pl.id} onClick={() => setSelected(pl.id)}
+                className={`w-full text-left px-3 py-2 rounded-lg text-sm transition ${selected === pl.id ? "bg-purple-600/20 text-purple-300 border border-purple-500/30" : "text-gray-400 hover:text-white hover:bg-white/5"}`}>
+                <div className="font-medium">{pl.name}</div>
+                <div className="text-xs opacity-70">{pl.videoIds.length} video{pl.videoIds.length !== 1 ? "s" : ""}</div>
+              </button>
+            ))}
+            <div className="pt-2 border-t border-purple-500/20">
+              <div className="flex gap-1">
+                <input value={newName} onChange={(e) => setNewName(e.target.value)}
+                  placeholder="New playlist..."
+                  className="flex-1 bg-[#0D0920] border border-purple-500/30 text-white rounded-lg px-2 py-1.5 text-xs focus:outline-none placeholder-gray-600" />
+                <button onClick={() => { if (newName.trim()) { addPlaylist(newName); setNewName(""); } }}
+                  className="bg-purple-600 hover:bg-purple-700 text-white px-2 py-1.5 rounded-lg text-xs transition">+</button>
+              </div>
+            </div>
+          </div>
         </div>
-        <button onClick={() => setShowForm(!showForm)}
-          className="flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 rounded-lg text-white font-medium text-sm transition-colors">
-          <Plus className="w-4 h-4" /> New Playlist
-        </button>
-      </div>
 
-      {showForm && (
-        <form onSubmit={handleCreate} className="glass-card p-5 flex gap-3">
-          <input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="Playlist name" required
-            className="flex-1 px-4 py-2 rounded-lg bg-[#1A1030] border border-purple-900/50 text-white placeholder-gray-600 focus:outline-none focus:border-purple-500 text-sm" />
-          <button type="submit" className="px-5 py-2 bg-purple-600 hover:bg-purple-700 rounded-lg text-white text-sm font-medium">Create</button>
-          <button type="button" onClick={() => setShowForm(false)} className="px-5 py-2 bg-[#1A1030] border border-purple-900/40 rounded-lg text-gray-400 text-sm hover:text-white">Cancel</button>
-        </form>
-      )}
-
-      {playlists.length === 0 ? (
-        <div className="glass-card p-16 text-center">
-          <List className="w-12 h-12 text-purple-800 mx-auto mb-3" />
-          <p className="text-gray-400">No playlists yet. Create one to organize your videos!</p>
-        </div>
-      ) : (
-        <div className="space-y-4">
-          {playlists.map((playlist) => {
-            const playlistVideos = playlist.videoIds
-              .map((id) => videos.find((v) => v.id === id))
-              .filter(Boolean) as typeof videos;
-
-            return (
-              <div key={playlist.id} className="glass-card p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-3">
-                    <List className="w-5 h-5 text-purple-400" />
-                    <div>
-                      <h3 className="font-bold text-white">{playlist.name}</h3>
-                      <p className="text-xs text-gray-500">{playlistVideos.length} videos</p>
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => setSelectedPlaylist(selectedPlaylist === playlist.id ? null : playlist.id)}
-                    className="text-xs text-purple-400 hover:text-purple-300 transition-colors"
-                  >
-                    {selectedPlaylist === playlist.id ? "Done" : "+ Add video"}
-                  </button>
+        {/* Content */}
+        <div className="flex-1 min-w-0">
+          {selectedPlaylist ? (
+            <>
+              <h2 className="text-lg font-semibold text-white mb-4">{selectedPlaylist.name}</h2>
+              {playlistVideos.length === 0 ? (
+                <div className="rounded-xl border border-purple-500/20 bg-[#1A1030] p-10 text-center text-gray-500">
+                  No videos in this playlist yet. Add some from your gallery.
                 </div>
-
-                {selectedPlaylist === playlist.id && (
-                  <form onSubmit={handleAddVideo} className="flex gap-2 mb-4">
-                    <select value={addVideoId} onChange={(e) => setAddVideoId(e.target.value)}
-                      className="flex-1 px-3 py-2 rounded-lg bg-[#1A1030] border border-purple-900/50 text-white text-sm focus:outline-none focus:border-purple-500">
-                      <option value="">Select a video</option>
-                      {videos.filter((v) => !playlist.videoIds.includes(v.id)).map((v) => (
-                        <option key={v.id} value={v.id}>{v.title}</option>
-                      ))}
-                    </select>
-                    <button type="submit" disabled={!addVideoId}
-                      className="px-4 py-2 bg-purple-600 hover:bg-purple-700 disabled:opacity-50 rounded-lg text-white text-sm font-medium">
-                      Add
-                    </button>
-                  </form>
-                )}
-
-                {playlistVideos.length === 0 ? (
-                  <p className="text-gray-500 text-sm">No videos in this playlist yet.</p>
-                ) : (
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                    {playlistVideos.map((video) => (
-                      <div key={video.id} className="rounded-lg overflow-hidden bg-[#1A1030] border border-purple-900/30">
-                        <div className={`h-20 bg-gradient-to-br ${video.thumbnailColor} flex items-center justify-center`}>
-                          <Play className="w-5 h-5 text-white" />
-                        </div>
-                        <div className="p-2">
-                          <p className="text-xs text-white truncate">{video.title}</p>
-                          <p className="text-xs text-gray-500">{video.duration}s</p>
+              ) : (
+                <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-4">
+                  {playlistVideos.map((v) => (
+                    <div key={v.id} className="rounded-xl border border-purple-500/20 bg-[#1A1030] overflow-hidden">
+                      <div className={`h-36 bg-gradient-to-br ${v.thumbnailColor} flex items-center justify-center`}>
+                        <div className="w-10 h-10 rounded-full bg-black/40 flex items-center justify-center">
+                          <span className="text-white">▶</span>
                         </div>
                       </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            );
-          })}
+                      <div className="p-3">
+                        <div className="text-sm font-semibold text-white truncate">{v.title}</div>
+                        <div className="text-xs text-gray-400 mt-1">{v.duration}s • {v.style}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>
+          ) : (
+            <div className="rounded-xl border border-purple-500/20 bg-[#1A1030] p-10 text-center text-gray-500">
+              Select a playlist to view its videos.
+            </div>
+          )}
         </div>
-      )}
+      </div>
     </div>
   );
 }

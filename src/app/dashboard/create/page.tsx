@@ -1,35 +1,31 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAppStore } from "@/lib/store";
+import { Sparkles, Play, Download, Save, Share2, RefreshCw } from "lucide-react";
 
 const HAIR_COLORS = [
-  { label: "Black", value: "#1C1C1C" },
-  { label: "Brown", value: "#6B3A2A" },
-  { label: "Blonde", value: "#D4A017" },
-  { label: "Red", value: "#C0392B" },
-  { label: "White", value: "#F0F0F0" },
-  { label: "Blue", value: "#2980B9" },
-  { label: "Purple", value: "#8E44AD" },
-  { label: "Pink", value: "#FF69B4" },
-  { label: "Auburn", value: "#A0522D" },
-  { label: "Silver", value: "#C0C0C0" },
+  { name: "Black", hex: "#1C1C1C" },
+  { name: "Brown", hex: "#7B3F00" },
+  { name: "Blonde", hex: "#F5DEB3" },
+  { name: "Red", hex: "#C0392B" },
+  { name: "White", hex: "#FFFFFF" },
+  { name: "Blue", hex: "#4169E1" },
+  { name: "Purple", hex: "#9B59B6" },
+  { name: "Pink", hex: "#FFB6C1" },
+  { name: "Auburn", hex: "#A52A2A" },
+  { name: "Silver", hex: "#C0C0C0" },
 ];
 
-const BODY_TYPES = ["Slim", "Athletic", "Curvy", "Muscular"];
-const ATTIRES = ["Casual", "Formal", "Swimwear", "Lingerie", "Athletic", "Fantasy"];
-const GENDERS = ["Masculine", "Feminine", "Androgynous"];
+const BODY_TYPES = ["Slim", "Athletic", "Curvy", "Muscular", "Petite", "Plus Size"];
+const ATTIRE_PRESETS = ["Casual", "Formal", "Swimwear", "Lingerie", "Athletic", "Fantasy"];
+const GENDERS = ["Female", "Male", "Non-binary"];
 const STYLES = ["Realistic", "Artistic", "Cinematic"];
+const PRO_STYLES = ["Realistic", "Artistic", "Cinematic", "Anime", "Oil Painting"];
 const CAMERAS = ["Front", "Side", "POV", "Aerial"];
-const POSE_PRESETS = [
-  "Intimate embrace", "Dancing", "Sitting together", "Walking hand in hand",
-  "Cuddling on sofa", "Beach stroll", "Candlelit dinner", "Morning in bed",
-  "Yoga together", "Swimming", "Reading together", "Stargazing",
-  "Cooking together", "Hot tub", "Massage", "Workout partner",
-  "Playful chase", "Slow dance", "Sunset watch", "Coffee morning",
-];
+const POSE_PRESETS = ["Natural", "Romantic", "Playful", "Intimate", "Dynamic", "Elegant"];
 
-interface CharSettings {
+interface CharConfig {
   name: string;
   hairColor: string;
   bodyType: string;
@@ -37,32 +33,64 @@ interface CharSettings {
   gender: string;
 }
 
-const defaultChar = (): CharSettings => ({ name: "", hairColor: "#1C1C1C", bodyType: "Slim", attire: "Casual", gender: "Feminine" });
+const defaultChar = (): CharConfig => ({
+  name: "",
+  hairColor: "#1C1C1C",
+  bodyType: "Slim",
+  attire: "Casual",
+  gender: "Female",
+});
+
+interface VideoResult {
+  id: string;
+  prompt: string;
+  duration: number;
+  style: string;
+  thumbnailColor: string;
+  characters: string[];
+  createdAt: string;
+  isShared: boolean;
+  likes: number;
+  title: string;
+}
 
 export default function CreatePage() {
   const { user, isGenerating, generateVideo, addCharacter } = useAppStore();
-  const isPro = user?.plan === "pro" || user?.plan === "admin";
-  const maxSlots = isPro ? 5 : 2;
-
   const [prompt, setPrompt] = useState("");
   const [duration, setDuration] = useState(15);
   const [style, setStyle] = useState("Realistic");
   const [camera, setCamera] = useState("Front");
-  const [posePreset, setPosePreset] = useState("");
+  const [pose, setPose] = useState("Natural");
   const [narrativeArc, setNarrativeArc] = useState(false);
-  const [activeChar, setActiveChar] = useState(0);
-  const [chars, setChars] = useState<[CharSettings, CharSettings]>([defaultChar(), defaultChar()]);
-  const [generatedVideo, setGeneratedVideo] = useState<{ title: string; thumbnailColor: string; duration: number; style: string; prompt: string } | null>(null);
+  const [activeChar, setActiveChar] = useState<0 | 1>(0);
+  const [charA, setCharA] = useState<CharConfig>(defaultChar());
+  const [charB, setCharB] = useState<CharConfig>({ ...defaultChar(), gender: "Male" });
+  const [progress, setProgress] = useState(0);
+  const [lastVideo, setLastVideo] = useState<VideoResult | null>(null);
 
-  const { characters } = useAppStore();
-  const usedSlots = characters.length;
+  const isPro = user?.plan === "pro" || user?.plan === "admin";
 
-  function updateChar(idx: number, patch: Partial<CharSettings>) {
-    setChars((prev) => {
-      const next: [CharSettings, CharSettings] = [{ ...prev[0] }, { ...prev[1] }];
-      next[idx] = { ...next[idx], ...patch };
-      return next;
-    });
+  useEffect(() => {
+    let interval: ReturnType<typeof setInterval>;
+    if (isGenerating) {
+      setProgress(0);
+      interval = setInterval(() => {
+        setProgress((p) => Math.min(p + 3, 95));
+      }, 90);
+    } else {
+      setProgress(0);
+    }
+    return () => clearInterval(interval);
+  }, [isGenerating]);
+
+  const currentChar = activeChar === 0 ? charA : charB;
+
+  function updateChar(field: keyof CharConfig, value: string) {
+    if (activeChar === 0) {
+      setCharA((c) => ({ ...c, [field]: value }));
+    } else {
+      setCharB((c) => ({ ...c, [field]: value }));
+    }
   }
 
   async function handleGenerate() {
@@ -71,202 +99,292 @@ export default function CreatePage() {
       duration,
       style,
       camera,
-      posePreset,
-      characters: [],
+      pose,
+      narrativeArc,
+      characters: [charA.name || "Character A", charB.name || "Character B"],
     });
-    setGeneratedVideo({ title: video.title, thumbnailColor: video.thumbnailColor, duration: video.duration, style: video.style, prompt: video.prompt });
+    setLastVideo(video);
+    setProgress(100);
   }
 
-  function handleSaveChar(idx: number) {
-    const c = chars[idx];
-    if (!c.name.trim()) return;
-    addCharacter({ name: c.name, hairColor: c.hairColor, bodyType: c.bodyType, attire: c.attire, gender: c.gender });
+  function handleSaveCharacter() {
+    const char = activeChar === 0 ? charA : charB;
+    addCharacter({
+      name: char.name || `Character ${activeChar + 1}`,
+      hairColor: char.hairColor,
+      bodyType: char.bodyType,
+      attire: char.attire,
+      gender: char.gender,
+    });
+    alert("Character saved!");
   }
 
-  const durations = isPro ? [5, 10, 15, 30, 60] : [5, 10, 15];
+  const durationOptions = isPro ? [5, 10, 15, 30, 60] : [5, 10, 15];
 
   return (
-    <div className="p-6 max-w-7xl mx-auto space-y-6">
-      <h1 className="text-2xl font-bold text-white">Create</h1>
+    <div className="max-w-6xl mx-auto">
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold text-white">Create Video</h1>
+        <p className="text-gray-400 text-sm mt-1">Design your scene and generate a synthetic AI video</p>
+      </div>
+
       <div className="grid lg:grid-cols-2 gap-6">
-        {/* Left: Prompt & Settings */}
+        {/* Left Panel */}
         <div className="space-y-5">
-          <div className="rounded-xl border border-purple-500/20 bg-[#1A1030] p-6">
+          <div className="rounded-xl border border-purple-500/20 bg-[#1A1030] p-5">
             <label className="block text-sm font-medium text-gray-300 mb-2">Scene Description</label>
             <textarea
-              rows={4}
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
-              placeholder="Describe the scene, emotion, action, and setting..."
-              className="bg-[#0D0920] border border-purple-500/30 text-white rounded-lg px-3 py-2 w-full focus:outline-none focus:border-purple-500 placeholder-gray-600 resize-none"
+              placeholder="Describe your scene in detail..."
+              rows={4}
+              className="bg-[#0D0920] border border-purple-500/30 text-white rounded-lg px-3 py-2 w-full focus:outline-none focus:border-purple-400 placeholder-gray-600 text-sm resize-none"
             />
           </div>
-          <div className="rounded-xl border border-purple-500/20 bg-[#1A1030] p-6 space-y-4">
-            <h3 className="font-semibold text-white">Video Settings</h3>
-            <div className="grid grid-cols-3 gap-4">
+
+          <div className="rounded-xl border border-purple-500/20 bg-[#1A1030] p-5 space-y-4">
+            <h3 className="text-sm font-semibold text-white">Video Settings</h3>
+            <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs text-gray-400 mb-1.5">Duration</label>
-                <select value={duration} onChange={(e) => setDuration(Number(e.target.value))}
-                  className="bg-[#0D0920] border border-purple-500/30 text-white rounded-lg px-2 py-1.5 w-full text-sm">
-                  {durations.map((d) => <option key={d} value={d}>{d}s</option>)}
+                <select
+                  value={duration}
+                  onChange={(e) => setDuration(Number(e.target.value))}
+                  className="bg-[#0D0920] border border-purple-500/30 text-white rounded-lg px-3 py-2 w-full text-sm focus:outline-none"
+                >
+                  {durationOptions.map((d) => (
+                    <option key={d} value={d}>{d} seconds</option>
+                  ))}
                 </select>
               </div>
               <div>
                 <label className="block text-xs text-gray-400 mb-1.5">Style</label>
-                <select value={style} onChange={(e) => setStyle(e.target.value)}
-                  className="bg-[#0D0920] border border-purple-500/30 text-white rounded-lg px-2 py-1.5 w-full text-sm">
-                  {STYLES.map((s) => <option key={s}>{s}</option>)}
+                <select
+                  value={style}
+                  onChange={(e) => setStyle(e.target.value)}
+                  className="bg-[#0D0920] border border-purple-500/30 text-white rounded-lg px-3 py-2 w-full text-sm focus:outline-none"
+                >
+                  {(isPro ? PRO_STYLES : STYLES).map((s) => (
+                    <option key={s} value={s}>{s}</option>
+                  ))}
                 </select>
               </div>
               <div>
-                <label className="block text-xs text-gray-400 mb-1.5">Camera</label>
-                <select value={camera} onChange={(e) => setCamera(e.target.value)}
-                  className="bg-[#0D0920] border border-purple-500/30 text-white rounded-lg px-2 py-1.5 w-full text-sm">
-                  {CAMERAS.map((c) => <option key={c}>{c}</option>)}
+                <label className="block text-xs text-gray-400 mb-1.5">Camera Angle</label>
+                <select
+                  value={camera}
+                  onChange={(e) => setCamera(e.target.value)}
+                  className="bg-[#0D0920] border border-purple-500/30 text-white rounded-lg px-3 py-2 w-full text-sm focus:outline-none"
+                >
+                  {CAMERAS.map((c) => <option key={c} value={c}>{c}</option>)}
                 </select>
               </div>
             </div>
+
             {isPro && (
               <div className="border-t border-purple-500/20 pt-4 space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium text-white">Advanced Controls</span>
-                  <span className="text-xs bg-amber-400/20 text-amber-300 px-2 py-0.5 rounded">Pro</span>
-                </div>
+                <div className="text-xs text-purple-400 font-medium">Pro Advanced Controls</div>
                 <div>
                   <label className="block text-xs text-gray-400 mb-1.5">Pose Preset</label>
-                  <select value={posePreset} onChange={(e) => setPosePreset(e.target.value)}
-                    className="bg-[#0D0920] border border-purple-500/30 text-white rounded-lg px-2 py-1.5 w-full text-sm">
-                    <option value="">— Select pose —</option>
-                    {POSE_PRESETS.map((p) => <option key={p}>{p}</option>)}
+                  <select
+                    value={pose}
+                    onChange={(e) => setPose(e.target.value)}
+                    className="bg-[#0D0920] border border-purple-500/30 text-white rounded-lg px-3 py-2 w-full text-sm focus:outline-none"
+                  >
+                    {POSE_PRESETS.map((p) => <option key={p} value={p}>{p}</option>)}
                   </select>
                 </div>
-                <div className="flex items-center gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setNarrativeArc(!narrativeArc)}
-                    className={`relative w-10 h-5 rounded-full transition-colors ${narrativeArc ? "bg-purple-600" : "bg-gray-700"}`}
-                  >
-                    <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full transition-transform ${narrativeArc ? "translate-x-5" : "translate-x-0.5"}`} />
-                  </button>
-                  <span className="text-sm text-gray-300">Narrative Arc</span>
-                </div>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={narrativeArc}
+                    onChange={(e) => setNarrativeArc(e.target.checked)}
+                    className="w-4 h-4 accent-purple-600"
+                  />
+                  <span className="text-sm text-gray-300">Enable Narrative Arc</span>
+                </label>
               </div>
             )}
           </div>
-
-          {/* Generate button */}
-          <button
-            onClick={handleGenerate}
-            disabled={isGenerating || !prompt.trim()}
-            className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 disabled:opacity-50 text-white py-4 rounded-xl font-bold text-lg transition"
-          >
-            {isGenerating ? "Generating..." : "Generate Scene"}
-          </button>
-          {isGenerating && (
-            <div className="rounded-xl border border-purple-500/20 bg-[#1A1030] p-4">
-              <div className="text-sm text-gray-300 mb-2">Generating your scene...</div>
-              <div className="h-2 bg-gray-800 rounded-full overflow-hidden">
-                <div className="h-2 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full animate-pulse w-2/3" />
-              </div>
-            </div>
-          )}
         </div>
 
-        {/* Right: Character Customization */}
-        <div className="rounded-xl border border-purple-500/20 bg-[#1A1030] p-6 space-y-4">
-          <div className="flex items-center justify-between">
-            <h3 className="font-semibold text-white">Character Customization</h3>
-            <span className="text-xs text-gray-400">{usedSlots}/{maxSlots} slots</span>
-          </div>
-          <div className="flex gap-2 border-b border-purple-500/20 pb-3">
-            {["Character A", "Character B"].map((label, i) => (
-              <button key={i} onClick={() => setActiveChar(i)}
-                className={`px-4 py-1.5 rounded-lg text-sm font-medium transition ${activeChar === i ? "bg-purple-600 text-white" : "text-gray-400 hover:text-white hover:bg-white/5"}`}>
-                {label}
-              </button>
-            ))}
-          </div>
-          {[0, 1].map((idx) => activeChar === idx && (
-            <div key={idx} className="space-y-4">
+        {/* Right Panel */}
+        <div className="space-y-5">
+          <div className="rounded-xl border border-purple-500/20 bg-[#1A1030] p-5">
+            <div className="flex gap-2 mb-4">
+              {["Character A", "Character B"].map((label, idx) => (
+                <button
+                  key={label}
+                  onClick={() => setActiveChar(idx as 0 | 1)}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    activeChar === idx
+                      ? "bg-purple-600 text-white"
+                      : "bg-purple-500/10 text-gray-400 hover:text-white"
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+
+            <div className="space-y-4">
               <div>
                 <label className="block text-xs text-gray-400 mb-1.5">Name</label>
-                <input value={chars[idx].name} onChange={(e) => updateChar(idx, { name: e.target.value })}
+                <input
+                  value={currentChar.name}
+                  onChange={(e) => updateChar("name", e.target.value)}
                   placeholder="Character name"
-                  className="bg-[#0D0920] border border-purple-500/30 text-white rounded-lg px-3 py-2 w-full text-sm focus:outline-none focus:border-purple-500 placeholder-gray-600" />
+                  className="bg-[#0D0920] border border-purple-500/30 text-white rounded-lg px-3 py-2 w-full text-sm focus:outline-none focus:border-purple-400 placeholder-gray-600"
+                />
               </div>
+
               <div>
-                <label className="block text-xs text-gray-400 mb-1.5">Hair Color</label>
-                <div className="flex flex-wrap gap-2">
-                  {HAIR_COLORS.map((hc) => (
-                    <button key={hc.value} title={hc.label} onClick={() => updateChar(idx, { hairColor: hc.value })}
-                      className={`w-7 h-7 rounded-full border-2 transition ${chars[idx].hairColor === hc.value ? "border-purple-400 scale-110" : "border-transparent hover:border-gray-500"}`}
-                      style={{ backgroundColor: hc.value }} />
-                  ))}
-                </div>
-              </div>
-              <div>
-                <label className="block text-xs text-gray-400 mb-1.5">Body Type</label>
-                <div className="flex flex-wrap gap-2">
-                  {BODY_TYPES.map((b) => (
-                    <button key={b} onClick={() => updateChar(idx, { bodyType: b })}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-medium transition ${chars[idx].bodyType === b ? "bg-purple-600 text-white" : "bg-[#0D0920] border border-purple-500/30 text-gray-300 hover:border-purple-400"}`}>
-                      {b}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <div>
-                <label className="block text-xs text-gray-400 mb-1.5">Attire</label>
-                <div className="grid grid-cols-3 gap-2">
-                  {ATTIRES.map((a) => (
-                    <button key={a} onClick={() => updateChar(idx, { attire: a })}
-                      className={`px-2 py-2 rounded-lg text-xs font-medium transition ${chars[idx].attire === a ? "bg-purple-600 text-white" : "bg-[#0D0920] border border-purple-500/30 text-gray-300 hover:border-purple-400"}`}>
-                      {a}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <div>
-                <label className="block text-xs text-gray-400 mb-1.5">Gender / Presentation</label>
-                <div className="flex gap-2">
+                <label className="block text-xs text-gray-400 mb-2">Gender</label>
+                <div className="flex gap-2 flex-wrap">
                   {GENDERS.map((g) => (
-                    <button key={g} onClick={() => updateChar(idx, { gender: g })}
-                      className={`flex-1 py-1.5 rounded-lg text-xs font-medium transition ${chars[idx].gender === g ? "bg-purple-600 text-white" : "bg-[#0D0920] border border-purple-500/30 text-gray-300 hover:border-purple-400"}`}>
+                    <button
+                      key={g}
+                      onClick={() => updateChar("gender", g)}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                        currentChar.gender === g
+                          ? "bg-purple-600 text-white"
+                          : "bg-purple-500/10 text-gray-400 hover:text-white border border-purple-500/20"
+                      }`}
+                    >
                       {g}
                     </button>
                   ))}
                 </div>
               </div>
-              <button onClick={() => handleSaveChar(idx)} disabled={usedSlots >= maxSlots}
-                className="w-full bg-[#0D0920] border border-purple-500/30 hover:border-purple-400 text-purple-300 py-2 rounded-lg text-sm font-medium transition disabled:opacity-40">
-                Save as Character ({usedSlots}/{maxSlots})
+
+              <div>
+                <label className="block text-xs text-gray-400 mb-2">Hair Color</label>
+                <div className="flex gap-2 flex-wrap">
+                  {HAIR_COLORS.map((h) => (
+                    <button
+                      key={h.hex}
+                      onClick={() => updateChar("hairColor", h.hex)}
+                      title={h.name}
+                      className={`w-7 h-7 rounded-full border-2 transition-all ${
+                        currentChar.hairColor === h.hex
+                          ? "border-white scale-110"
+                          : "border-transparent hover:border-gray-400"
+                      }`}
+                      style={{ backgroundColor: h.hex }}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs text-gray-400 mb-2">Body Type</label>
+                <div className="flex gap-2 flex-wrap">
+                  {BODY_TYPES.map((b) => (
+                    <button
+                      key={b}
+                      onClick={() => updateChar("bodyType", b)}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                        currentChar.bodyType === b
+                          ? "bg-purple-600 text-white"
+                          : "bg-purple-500/10 text-gray-400 hover:text-white border border-purple-500/20"
+                      }`}
+                    >
+                      {b}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs text-gray-400 mb-2">Attire</label>
+                <div className="flex gap-2 flex-wrap">
+                  {ATTIRE_PRESETS.map((a) => (
+                    <button
+                      key={a}
+                      onClick={() => updateChar("attire", a)}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                        currentChar.attire === a
+                          ? "bg-pink-600 text-white"
+                          : "bg-pink-500/10 text-gray-400 hover:text-white border border-pink-500/20"
+                      }`}
+                    >
+                      {a}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <button
+                onClick={handleSaveCharacter}
+                className="w-full border border-purple-500/40 hover:bg-purple-500/10 text-purple-300 px-4 py-2 rounded-lg text-sm transition-colors flex items-center justify-center gap-2"
+              >
+                <Save className="w-4 h-4" />
+                Save as Character
               </button>
             </div>
-          ))}
+          </div>
         </div>
       </div>
 
-      {/* Output section */}
-      {generatedVideo && (
-        <div className="rounded-xl border border-purple-500/20 bg-[#1A1030] p-6 space-y-4">
-          <h3 className="font-semibold text-white">Generated Output</h3>
-          <div className={`h-72 rounded-xl bg-gradient-to-br ${generatedVideo.thumbnailColor} flex items-center justify-center relative`}>
-            <div className="w-16 h-16 rounded-full bg-black/40 flex items-center justify-center cursor-pointer hover:bg-black/60 transition">
-              <span className="text-white text-2xl ml-1">▶</span>
+      {/* Generate Button */}
+      <div className="mt-6">
+        <button
+          onClick={handleGenerate}
+          disabled={isGenerating || !prompt.trim()}
+          className="w-full bg-purple-600 hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed text-white px-6 py-4 rounded-xl text-lg font-semibold transition-colors flex items-center justify-center gap-3"
+        >
+          <Sparkles className="w-5 h-5" />
+          {isGenerating ? "Generating..." : "Generate Video"}
+        </button>
+
+        {isGenerating && (
+          <div className="mt-3">
+            <div className="h-2 bg-purple-900/40 rounded-full overflow-hidden">
+              <div
+                className="h-full bg-gradient-to-r from-purple-600 to-pink-500 transition-all duration-200 rounded-full"
+                style={{ width: `${progress}%` }}
+              />
+            </div>
+            <p className="text-xs text-gray-400 text-center mt-2">Rendering your scene... {progress}%</p>
+          </div>
+        )}
+      </div>
+
+      {/* Output */}
+      {lastVideo && !isGenerating && (
+        <div className="mt-6 rounded-xl border border-purple-500/20 bg-[#1A1030] p-5">
+          <h3 className="text-lg font-semibold mb-4">Generated Video</h3>
+          <div className={`w-full max-w-lg h-64 bg-gradient-to-br ${lastVideo.thumbnailColor} rounded-xl flex items-center justify-center relative mb-4`}>
+            <div className="w-16 h-16 bg-black/40 rounded-full flex items-center justify-center">
+              <Play className="w-8 h-8 text-white ml-1" />
+            </div>
+            <div className="absolute bottom-3 right-3 bg-black/60 text-white text-xs px-2 py-1 rounded">
+              {lastVideo.duration}s · {lastVideo.style}
             </div>
           </div>
-          <div className="flex items-center gap-3 flex-wrap">
-            <span className="font-semibold text-white">{generatedVideo.title}</span>
-            <span className="text-xs bg-purple-600/20 text-purple-300 px-2 py-1 rounded">{generatedVideo.duration}s</span>
-            <span className="text-xs bg-[#0D0920] text-gray-300 px-2 py-1 rounded border border-purple-500/20">{generatedVideo.style}</span>
+          <div className="mb-4">
+            <div className="font-medium text-white">{lastVideo.title}</div>
+            <div className="text-sm text-gray-400 mt-1">{lastVideo.prompt}</div>
           </div>
-          <div className="flex flex-wrap gap-2">
-            <button className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg text-sm transition">Save to Gallery</button>
-            <button className="bg-[#0D0920] border border-purple-500/30 hover:border-purple-400 text-gray-300 px-4 py-2 rounded-lg text-sm transition">Download</button>
-            {isPro && <button className="bg-[#0D0920] border border-purple-500/30 hover:border-purple-400 text-gray-300 px-4 py-2 rounded-lg text-sm transition">Share to Community</button>}
-            <button onClick={handleGenerate} className="bg-[#0D0920] border border-purple-500/30 hover:border-purple-400 text-gray-300 px-4 py-2 rounded-lg text-sm transition">Regenerate</button>
+          <div className="flex gap-3 flex-wrap">
+            <button className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg text-sm transition-colors">
+              <Save className="w-4 h-4" />Save
+            </button>
+            <button className="flex items-center gap-2 border border-purple-500/30 hover:bg-purple-500/10 text-gray-300 px-4 py-2 rounded-lg text-sm transition-colors">
+              <Download className="w-4 h-4" />Download
+            </button>
+            {isPro && (
+              <button className="flex items-center gap-2 border border-purple-500/30 hover:bg-purple-500/10 text-gray-300 px-4 py-2 rounded-lg text-sm transition-colors">
+                <Share2 className="w-4 h-4" />Share to Community
+              </button>
+            )}
+            <button
+              onClick={handleGenerate}
+              className="flex items-center gap-2 border border-purple-500/30 hover:bg-purple-500/10 text-gray-300 px-4 py-2 rounded-lg text-sm transition-colors"
+            >
+              <RefreshCw className="w-4 h-4" />Regenerate
+            </button>
           </div>
-          <p className="text-xs text-gray-500 italic">&ldquo;{generatedVideo.prompt}&rdquo;</p>
         </div>
       )}
     </div>

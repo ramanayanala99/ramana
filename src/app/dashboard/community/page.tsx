@@ -2,81 +2,111 @@
 
 import { useState } from "react";
 import { useAppStore } from "@/lib/store";
-import { Play, Heart, Globe } from "lucide-react";
-
-const TABS = ["Popular", "New", "Following"];
 
 export default function CommunityPage() {
-  const { videos } = useAppStore();
-  const [tab, setTab] = useState("Popular");
+  const { videos, toggleShare } = useAppStore();
   const [optedIn, setOptedIn] = useState(false);
+  const [activeTab, setActiveTab] = useState<"popular" | "new" | "following">("popular");
 
   const sharedVideos = videos.filter((v) => v.isShared);
-  const sorted = tab === "Popular"
-    ? [...sharedVideos].sort((a, b) => b.likes - a.likes)
-    : [...sharedVideos].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+  // Mock community feed
+  const communityFeed = [
+    { id: "cf1", title: "Sunset Romance", gradient: "from-purple-600 to-pink-500", user: "anonymous", likes: 142, comments: 8 },
+    { id: "cf2", title: "Morning Bliss", gradient: "from-pink-500 to-red-500", user: "user_4821", likes: 87, comments: 3 },
+    { id: "cf3", title: "Poolside Dreams", gradient: "from-indigo-600 to-cyan-400", user: "anonymous", likes: 203, comments: 15 },
+    { id: "cf4", title: "Rain Dance", gradient: "from-blue-600 to-purple-500", user: "creative_99", likes: 56, comments: 2 },
+    { id: "cf5", title: "Candlelit Moment", gradient: "from-amber-500 to-orange-500", user: "anonymous", likes: 99, comments: 7 },
+    { id: "cf6", title: "Night Sky", gradient: "from-purple-800 to-blue-600", user: "user_2271", likes: 34, comments: 1 },
+  ];
+
+  const sorted = activeTab === "popular"
+    ? [...communityFeed].sort((a, b) => b.likes - a.likes)
+    : activeTab === "new"
+    ? [...communityFeed].reverse()
+    : communityFeed.slice(0, 3);
 
   return (
-    <div className="max-w-5xl mx-auto space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold text-white">Community</h1>
-        <p className="text-gray-400 text-sm mt-1">Discover shared synthetic creations from the community.</p>
+    <div className="p-6 max-w-5xl mx-auto space-y-6">
+      <h1 className="text-2xl font-bold text-white">Community</h1>
+
+      {/* Privacy banner */}
+      <div className="rounded-xl border border-amber-400/30 bg-amber-400/10 p-4 flex items-start gap-3">
+        <span className="text-xl mt-0.5">🔒</span>
+        <p className="text-amber-200 text-sm">
+          <strong className="text-amber-300">Community sharing is 100% opt-in.</strong> Your private content is never shared without your explicit permission. You control everything you post.
+        </p>
       </div>
 
-      {/* Opt-in banner */}
+      {/* Opt-in prompt */}
       {!optedIn && (
-        <div className="p-5 rounded-xl bg-purple-900/20 border border-purple-800/40">
-          <div className="flex items-start gap-3">
-            <Globe className="w-5 h-5 text-purple-400 flex-shrink-0 mt-0.5" />
-            <div className="flex-1">
-              <p className="font-semibold text-white mb-1">Community is opt-in</p>
-              <p className="text-sm text-gray-400 mb-3">Your content is private by default. Opt in to share videos to the community feed and discover others&apos; creations.</p>
-              <button onClick={() => setOptedIn(true)}
-                className="px-4 py-2 rounded-lg bg-purple-600 hover:bg-purple-700 text-white text-sm font-medium transition-colors">
-                Enable Community Access
-              </button>
-            </div>
+        <div className="rounded-xl border border-purple-500/20 bg-[#1A1030] p-6 text-center">
+          <div className="text-4xl mb-3">🌐</div>
+          <h2 className="text-lg font-semibold text-white mb-2">Join the Community</h2>
+          <p className="text-gray-400 text-sm mb-6 max-w-md mx-auto">
+            Opt in to browse and share community content. Discover creations from others, get likes, and showcase your best AI videos. Always anonymous, always optional.
+          </p>
+          <div className="flex flex-wrap justify-center gap-4 text-sm text-gray-400 mb-6">
+            {["Browse community creations", "Share your videos", "Earn likes", "Stay anonymous"].map((b) => (
+              <span key={b} className="flex items-center gap-1.5"><span className="text-purple-400">✓</span>{b}</span>
+            ))}
           </div>
+          <button onClick={() => setOptedIn(true)} className="bg-purple-600 hover:bg-purple-700 text-white px-8 py-3 rounded-lg font-semibold transition">
+            Enable Community Access
+          </button>
         </div>
       )}
 
-      {/* Tabs */}
-      <div className="flex gap-2">
-        {TABS.map((t) => (
-          <button key={t} onClick={() => setTab(t)}
-            className={`px-5 py-2 rounded-lg text-sm font-medium transition-colors ${tab === t ? "bg-purple-600 text-white" : "bg-[#1A1030] text-gray-400 hover:text-white border border-purple-900/40"}`}>
-            {t}
-          </button>
-        ))}
-      </div>
-
-      {sorted.length === 0 ? (
-        <div className="glass-card p-16 text-center">
-          <Globe className="w-12 h-12 text-purple-800 mx-auto mb-3" />
-          <p className="text-gray-400">No shared content yet. Share a video from your gallery to get started!</p>
-        </div>
-      ) : (
-        <div className="grid md:grid-cols-3 gap-5">
-          {sorted.map((video) => (
-            <div key={video.id} className="card-hover rounded-xl overflow-hidden bg-[#0D0820] border border-purple-900/30">
-              <div className={`h-44 bg-gradient-to-br ${video.thumbnailColor} flex items-center justify-center relative`}>
-                <div className="w-12 h-12 rounded-full bg-black/40 flex items-center justify-center cursor-pointer hover:bg-black/60 transition-colors">
-                  <Play className="w-6 h-6 text-white ml-0.5" />
-                </div>
-                <div className="absolute bottom-2 right-2 px-2 py-0.5 bg-black/60 rounded text-xs text-white">{video.duration}s</div>
-              </div>
-              <div className="p-4">
-                <p className="font-semibold text-white truncate mb-1">{video.title}</p>
-                <p className="text-xs text-gray-500 mb-3">{video.style} · {video.createdAt}</p>
-                <div className="flex items-center gap-3">
-                  <button className="flex items-center gap-1.5 text-gray-400 hover:text-pink-400 transition-colors text-sm">
-                    <Heart className="w-4 h-4" /> {video.likes}
-                  </button>
-                </div>
+      {optedIn && (
+        <>
+          {/* Share your content */}
+          {sharedVideos.length > 0 && (
+            <div className="rounded-xl border border-purple-500/20 bg-[#1A1030] p-4">
+              <p className="text-sm text-gray-300 mb-2 font-medium">Your shared content: {sharedVideos.length} video{sharedVideos.length !== 1 ? "s" : ""}</p>
+              <div className="flex flex-wrap gap-2">
+                {sharedVideos.map((v) => (
+                  <div key={v.id} className="flex items-center gap-2 bg-[#0D0920] border border-purple-500/30 rounded-lg px-3 py-1.5 text-xs text-gray-300">
+                    <span>{v.title}</span>
+                    <button onClick={() => toggleShare(v.id)} className="text-red-400 hover:text-red-300">✕</button>
+                  </div>
+                ))}
               </div>
             </div>
-          ))}
-        </div>
+          )}
+
+          {/* Tabs */}
+          <div className="flex gap-1 border-b border-purple-500/20 pb-0">
+            {(["popular", "new", "following"] as const).map((tab) => (
+              <button key={tab} onClick={() => setActiveTab(tab)}
+                className={`px-4 py-2 text-sm font-medium capitalize border-b-2 transition -mb-px ${activeTab === tab ? "border-purple-500 text-purple-300" : "border-transparent text-gray-400 hover:text-white"}`}>
+                {tab}
+              </button>
+            ))}
+          </div>
+
+          {/* Feed */}
+          <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-4">
+            {sorted.map((item) => (
+              <div key={item.id} className="rounded-xl border border-purple-500/20 bg-[#1A1030] overflow-hidden">
+                <div className={`h-44 bg-gradient-to-br ${item.gradient} flex items-center justify-center`}>
+                  <div className="w-12 h-12 rounded-full bg-black/40 flex items-center justify-center cursor-pointer">
+                    <span className="text-white text-xl ml-1">▶</span>
+                  </div>
+                </div>
+                <div className="p-3">
+                  <div className="font-semibold text-white text-sm truncate mb-1">{item.title}</div>
+                  <div className="flex items-center justify-between text-xs text-gray-400">
+                    <span>by {item.user}</span>
+                    <div className="flex items-center gap-3">
+                      <button className="flex items-center gap-1 hover:text-pink-400 transition">♥ {item.likes}</button>
+                      <span>💬 {item.comments}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </>
       )}
     </div>
   );
