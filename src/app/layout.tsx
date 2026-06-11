@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "AT Tool — AI Question Paper Generator for Indian Schools",
-  description: "Auto-generate CBSE, ICSE and all 28 state board-compliant question papers in minutes. Built for Indian teachers and educational institutes.",
+  title: "AdultEntertain — Ethical AI Adult Entertainment Studio",
+  description: "High-fidelity AI-generated synthetic couples. No real people. Privacy-first adult entertainment.",
 };
 
 export default function RootLayout({

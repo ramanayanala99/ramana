@@ -1,118 +1,142 @@
 "use client";
+
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { BookOpen, Eye, EyeOff, Lock, Mail, User, Building } from "lucide-react";
-import { useAppStore } from "@/lib/store";
+import { Gem, Eye, EyeOff, CheckCircle } from "lucide-react";
 
 export default function SignupPage() {
-  const router = useRouter();
-  const login = useAppStore((s) => s.login);
-  const [form, setForm] = useState({ name: "", email: "", password: "", school: "", role: "teacher" });
-  const [showPass, setShowPass] = useState(false);
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [ageConfirmed, setAgeConfirmed] = useState(false);
+  const [termsAgreed, setTermsAgreed] = useState(false);
+  const [plan, setPlan] = useState<"starter" | "pro">("pro");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const router = useRouter();
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setLoading(true);
-    await new Promise((r) => setTimeout(r, 800));
-    if (form.password.length < 6) {
-      setError("Password must be at least 6 characters.");
-      setLoading(false);
+    if (!ageConfirmed) {
+      setError("You must confirm you are 18 or older.");
       return;
     }
-    login({
-      id: "u_" + Date.now(),
-      name: form.name,
-      email: form.email,
-      role: form.role as "teacher" | "admin",
-      schoolName: form.school || "My School",
-      boards: [],
-      subjects: [],
-      plan: "free",
-      trialEndsAt: new Date(Date.now() + 14 * 86400000).toISOString().split("T")[0],
-    });
-    router.push("/onboarding");
+    if (!termsAgreed) {
+      setError("You must agree to the Terms of Service.");
+      return;
+    }
+    setError("");
+    setLoading(true);
+    await new Promise((r) => setTimeout(r, 1000));
     setLoading(false);
-  };
+    router.push("/dashboard");
+  }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-[#0F0A1E] flex items-center justify-center px-4 py-12">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <Link href="/" className="inline-flex items-center gap-2 font-bold text-2xl text-indigo-700">
-            <div className="bg-indigo-600 text-white rounded-lg p-2"><BookOpen className="w-6 h-6" /></div>
-            AT Tool
+          <Link href="/" className="inline-flex items-center gap-2">
+            <Gem className="text-purple-400 w-7 h-7" />
+            <span className="text-2xl font-bold text-white">AdultEntertain</span>
           </Link>
-          <h1 className="text-2xl font-bold text-gray-900 mt-6 mb-2">Start your free trial</h1>
-          <p className="text-gray-500">14 days free · No credit card required</p>
+          <h1 className="text-3xl font-bold text-white mt-6 mb-2">Create your account</h1>
+          <p className="text-gray-400 text-sm">Start with a 14-day free trial</p>
         </div>
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
-          {error && <div className="bg-red-50 text-red-600 text-sm p-3 rounded-lg mb-4">{error}</div>}
-          <form onSubmit={handleSubmit} className="space-y-4">
+
+        <div className="glass-card p-8">
+          <form onSubmit={handleSubmit} className="space-y-5">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
-              <div className="relative">
-                <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                <input type="text" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required
-                  className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  placeholder="Priya Sharma" />
-              </div>
+              <label className="block text-sm font-medium text-gray-300 mb-2">Full Name</label>
+              <input
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Alex Morgan"
+                required
+                className="w-full px-4 py-3 rounded-lg bg-[#1A1030] border border-purple-900/50 text-white placeholder-gray-600 focus:outline-none focus:border-purple-500 transition-colors"
+              />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">School Name</label>
-              <div className="relative">
-                <Building className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                <input type="text" value={form.school} onChange={(e) => setForm({ ...form, school: e.target.value })}
-                  className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  placeholder="Delhi Public School" />
-              </div>
+              <label className="block text-sm font-medium text-gray-300 mb-2">Email</label>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="you@example.com"
+                required
+                className="w-full px-4 py-3 rounded-lg bg-[#1A1030] border border-purple-900/50 text-white placeholder-gray-600 focus:outline-none focus:border-purple-500 transition-colors"
+              />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">I am a</label>
-              <select value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })}
-                className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                <option value="teacher">Teacher</option>
-                <option value="admin">School Administrator / Principal</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+              <label className="block text-sm font-medium text-gray-300 mb-2">Password</label>
               <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                <input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} required
-                  className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  placeholder="you@school.edu.in" />
-              </div>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                <input type={showPass ? "text" : "password"} value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} required
-                  className="w-full pl-10 pr-10 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  placeholder="Min. 6 characters" />
-                <button type="button" onClick={() => setShowPass(!showPass)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">
-                  {showPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                <input
+                  type={showPassword ? "text" : "password"}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Min. 8 characters"
+                  required
+                  minLength={8}
+                  className="w-full px-4 py-3 rounded-lg bg-[#1A1030] border border-purple-900/50 text-white placeholder-gray-600 focus:outline-none focus:border-purple-500 transition-colors pr-12"
+                />
+                <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300">
+                  {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                 </button>
               </div>
             </div>
-            <button type="submit" disabled={loading}
-              className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 text-white font-semibold py-3 rounded-xl transition">
-              {loading ? "Creating account..." : "Create Free Account"}
+
+            {/* Plan selection */}
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-3">Select Plan</label>
+              <div className="grid grid-cols-2 gap-3">
+                {(["starter", "pro"] as const).map((p) => (
+                  <label key={p} className={`flex flex-col gap-1 p-4 rounded-lg border cursor-pointer transition-colors ${plan === p ? "border-purple-500 bg-purple-900/20" : "border-purple-900/40 hover:border-purple-700"}`}>
+                    <input type="radio" name="plan" value={p} checked={plan === p} onChange={() => setPlan(p)} className="sr-only" />
+                    <span className="font-semibold text-white capitalize">{p}</span>
+                    <span className="text-purple-400 font-bold">{p === "starter" ? "$10" : "$50"}<span className="text-gray-500 text-xs font-normal">/mo</span></span>
+                    {p === "pro" && <span className="text-xs text-purple-300">Most Popular</span>}
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            {/* Checkboxes */}
+            <div className="space-y-3">
+              <label className="flex items-start gap-3 cursor-pointer">
+                <div className={`w-5 h-5 rounded border flex-shrink-0 mt-0.5 flex items-center justify-center transition-colors ${ageConfirmed ? "bg-purple-600 border-purple-600" : "border-gray-600"}`} onClick={() => setAgeConfirmed(!ageConfirmed)}>
+                  {ageConfirmed && <CheckCircle className="w-3 h-3 text-white" />}
+                </div>
+                <span className="text-sm text-gray-300">I confirm I am <strong className="text-white">18 years of age or older</strong> and legally permitted to view adult content in my jurisdiction.</span>
+              </label>
+              <label className="flex items-start gap-3 cursor-pointer">
+                <div className={`w-5 h-5 rounded border flex-shrink-0 mt-0.5 flex items-center justify-center transition-colors ${termsAgreed ? "bg-purple-600 border-purple-600" : "border-gray-600"}`} onClick={() => setTermsAgreed(!termsAgreed)}>
+                  {termsAgreed && <CheckCircle className="w-3 h-3 text-white" />}
+                </div>
+                <span className="text-sm text-gray-300">I agree to the <Link href="/terms" className="text-purple-400 hover:underline">Terms of Service</Link> and <Link href="/privacy" className="text-purple-400 hover:underline">Privacy Policy</Link>.</span>
+              </label>
+            </div>
+
+            {error && (
+              <div className="p-3 rounded-lg bg-red-900/30 border border-red-800/50 text-red-400 text-sm">{error}</div>
+            )}
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full py-3 rounded-lg bg-purple-600 hover:bg-purple-700 disabled:opacity-60 font-semibold text-white transition-colors"
+            >
+              {loading ? "Creating account..." : "Create Account — Start Free Trial"}
             </button>
           </form>
-          <p className="text-center text-xs text-gray-400 mt-4">
-            By signing up, you agree to our{" "}
-            <Link href="/terms" className="text-indigo-600 hover:underline">Terms of Service</Link> and{" "}
-            <Link href="/privacy" className="text-indigo-600 hover:underline">Privacy Policy</Link>
-          </p>
-          <p className="text-center text-sm text-gray-500 mt-4">
-            Already have an account?{" "}
-            <Link href="/login" className="text-indigo-600 font-semibold hover:underline">Sign in</Link>
-          </p>
         </div>
+
+        <p className="text-center text-gray-400 text-sm mt-6">
+          Already have an account?{" "}
+          <Link href="/login" className="text-purple-400 hover:text-purple-300 font-medium">Sign in</Link>
+        </p>
       </div>
     </div>
   );

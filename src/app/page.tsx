@@ -1,286 +1,278 @@
+"use client";
+
+import { useState, useEffect } from "react";
 import Link from "next/link";
-import { BookOpen, Clock, CheckCircle, Star, ArrowRight, Zap, Shield, Users, BarChart3, FileText, Globe } from "lucide-react";
-
-const testimonials = [
-  {
-    quote: "I used to spend 3–4 hours making a single question paper for my Class 10 boards. With AT Tool, I'm done in 15 minutes — and the questions are perfectly aligned to CBSE patterns. This is a game-changer.",
-    name: "Mrs. Kavitha Ramachandran",
-    title: "Senior Mathematics Teacher",
-    school: "Kendriya Vidyalaya, Chennai",
-  },
-  {
-    quote: "Managing 12 teachers across 3 campuses was chaotic. AT Tool's admin panel lets me see exactly what papers are being made, standardise our templates, and ensure every teacher follows our school format. Finally, control.",
-    name: "Mr. Suresh Nambiar",
-    title: "Principal",
-    school: "Sunrise Public School Group, Kochi",
-  },
-  {
-    quote: "We operate on a tight budget, so ₹799/month felt like a risk. But we recovered that cost in the first week alone — just from hours saved. The Tamil Nadu Board support is surprisingly accurate.",
-    name: "Ms. Deepa Iyer",
-    title: "Academics Coordinator",
-    school: "Bharathi Matriculation School, Coimbatore",
-  },
-];
-
-const faqs = [
-  {
-    q: "How do you keep up with changing syllabus and board patterns?",
-    a: "Our dedicated content team continuously updates the question bank in sync with official board notifications. We track curriculum changes across all 28 state boards plus CBSE and ICSE, so your papers are always syllabus-compliant."
-  },
-  {
-    q: "We already use a generic AI tool. Why switch to AT Tool?",
-    a: "Generic tools don't know that Maharashtra Board Class 10 uses a different marking scheme than CBSE, or that Tamil Nadu Board requires a specific answer format. AT Tool is built ground-up for Indian educational boards with verified, curriculum-mapped questions."
-  },
-  {
-    q: "Our teachers are not very tech-savvy. Will they be able to use this?",
-    a: "Yes — and we designed specifically for this. AT Tool requires zero technical knowledge. If a teacher can use WhatsApp, they can use AT Tool. The onboarding wizard gets teachers creating their first paper in under 10 minutes."
-  },
-  {
-    q: "Is this affordable for a small school or individual teacher?",
-    a: "Absolutely. Our Starter plan is ₹799/month — less than the cost of printing a few reams of paper. We also offer a 14-day free trial, no credit card required, so you can see the value before paying."
-  },
-  {
-    q: "How secure is our school's data and question papers?",
-    a: "All data is encrypted at rest and in transit using AES-256 and TLS 1.3. Your question papers are private by default. We follow DPDP Act 2023 compliance guidelines for Indian users."
-  },
-];
+import { useAppStore } from "@/lib/store";
+import { Gem, ArrowRight, CheckCircle, Zap, Star } from "lucide-react";
 
 export default function LandingPage() {
+  const [showAgeGate, setShowAgeGate] = useState(false);
+  const verifyAge = useAppStore((s) => s.verifyAge);
+
+  useEffect(() => {
+    const verified = localStorage.getItem("age-verified");
+    if (!verified) setShowAgeGate(true);
+  }, []);
+
+  function handleEnter() {
+    localStorage.setItem("age-verified", "true");
+    verifyAge();
+    setShowAgeGate(false);
+  }
+
+  function handleExit() {
+    window.location.href = "https://google.com";
+  }
+
   return (
-    <div className="min-h-screen bg-white">
-      <nav className="sticky top-0 z-50 bg-white/90 backdrop-blur border-b border-gray-100 shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between h-16">
-          <Link href="/" className="flex items-center gap-2 font-bold text-xl text-indigo-700">
-            <div className="bg-indigo-600 text-white rounded-lg p-1.5"><BookOpen className="w-5 h-5" /></div>
-            AT Tool
-          </Link>
-          <div className="hidden md:flex items-center gap-6 text-sm font-medium text-gray-600">
-            <a href="#features" className="hover:text-indigo-600">Features</a>
-            <a href="#boards" className="hover:text-indigo-600">Boards</a>
-            <a href="#testimonials" className="hover:text-indigo-600">Reviews</a>
-            <a href="#pricing" className="hover:text-indigo-600">Pricing</a>
-            <a href="#faq" className="hover:text-indigo-600">FAQ</a>
+    <div className="min-h-screen bg-[#0F0A1E] text-white">
+      {/* Age Gate Modal */}
+      {showAgeGate && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-lg bg-black/70">
+          <div className="glass-card p-10 max-w-md w-full mx-4 text-center">
+            <div className="text-5xl mb-4">🔞</div>
+            <h2 className="text-3xl font-bold text-white mb-3">Adults Only (18+)</h2>
+            <p className="text-gray-400 mb-8 text-sm leading-relaxed">
+              This platform contains adult content intended for mature audiences only.
+              By entering, you confirm that you are 18 years of age or older and that
+              it is legal to view such content in your jurisdiction.
+            </p>
+            <div className="flex flex-col gap-3">
+              <button
+                onClick={handleEnter}
+                className="w-full py-3 rounded-lg bg-purple-600 hover:bg-purple-700 font-semibold transition-colors"
+              >
+                I am 18 or older — Enter
+              </button>
+              <button
+                onClick={handleExit}
+                className="w-full py-3 rounded-lg border border-gray-600 text-gray-400 hover:border-gray-400 hover:text-gray-200 font-semibold transition-colors"
+              >
+                Exit
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Navbar */}
+      <nav className="border-b border-purple-900/30 px-6 py-4">
+        <div className="max-w-7xl mx-auto flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Gem className="text-purple-400 w-6 h-6" />
+            <span className="text-xl font-bold text-white">AdultEntertain</span>
+          </div>
+          <div className="hidden md:flex items-center gap-8 text-sm text-gray-400">
+            <a href="#features" className="hover:text-white transition-colors">Features</a>
+            <a href="#how-it-works" className="hover:text-white transition-colors">How It Works</a>
+            <a href="#pricing" className="hover:text-white transition-colors">Pricing</a>
+            <a href="#faq" className="hover:text-white transition-colors">FAQ</a>
           </div>
           <div className="flex items-center gap-3">
-            <Link href="/login" className="text-sm font-medium text-gray-700 hover:text-indigo-600 transition">Log In</Link>
-            <Link href="/signup" className="bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold px-4 py-2 rounded-lg transition">
-              Start Free Trial
+            <Link href="/login" className="text-sm text-gray-300 hover:text-white transition-colors">Login</Link>
+            <Link href="/signup" className="text-sm px-4 py-2 bg-purple-600 hover:bg-purple-700 rounded-lg font-medium transition-colors">
+              Sign Up
             </Link>
           </div>
         </div>
       </nav>
 
-      <section className="gradient-hero text-white py-24 px-4">
+      {/* Hero */}
+      <section className="bg-gradient-to-br from-[#0F0A1E] to-[#1A1030] py-24 px-6">
         <div className="max-w-5xl mx-auto text-center">
-          <div className="inline-flex items-center gap-2 bg-white/20 backdrop-blur rounded-full px-4 py-1.5 text-sm font-medium mb-6">
-            <Zap className="w-4 h-4 text-yellow-300" />
-            Built for Indian Educators · Trusted by 1,200+ Schools
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-purple-900/30 border border-purple-800/40 text-purple-300 text-sm mb-8">
+            <Zap className="w-4 h-4" />
+            100% Synthetic · No Real People
           </div>
-          <h1 className="text-4xl md:text-6xl font-extrabold leading-tight mb-6">
-            Stop Wasting Sundays<br />
-            <span className="text-yellow-300">Making Question Papers.</span>
+          <h1 className="text-5xl md:text-7xl font-black mb-6 leading-tight">
+            <span className="gradient-text">Ethical AI Adult Entertainment,</span>
+            <br />
+            <span className="text-white">Fully Synthetic</span>
           </h1>
-          <p className="text-xl md:text-2xl text-indigo-100 max-w-3xl mx-auto mb-8">
-            AT Tool auto-generates CBSE, ICSE, and all 28 state board–compliant question papers in minutes — not hours. Reclaim your weekends.
+          <p className="text-xl text-gray-400 mb-10 max-w-2xl mx-auto leading-relaxed">
+            Create fully AI-generated synthetic couples with customizable characters, styles, and narratives.
+            No real likenesses. No privacy concerns. Pure creative freedom.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link href="/signup" className="bg-yellow-400 hover:bg-yellow-300 text-gray-900 font-bold px-8 py-4 rounded-xl text-lg flex items-center justify-center gap-2 transition">
-              Generate My First Paper Free <ArrowRight className="w-5 h-5" />
+            <Link href="/signup" className="flex items-center justify-center gap-2 px-8 py-4 bg-purple-600 hover:bg-purple-700 rounded-xl font-semibold text-white transition-colors text-lg">
+              Start Free Trial <ArrowRight className="w-5 h-5" />
             </Link>
-            <Link href="/login" className="border-2 border-white/50 hover:border-white text-white font-semibold px-8 py-4 rounded-xl text-lg transition">
-              Log In
-            </Link>
+            <button className="flex items-center justify-center gap-2 px-8 py-4 border border-purple-700/50 hover:border-purple-500 rounded-xl font-semibold text-gray-300 hover:text-white transition-colors text-lg">
+              Watch Demo
+            </button>
           </div>
-          <p className="mt-4 text-sm text-indigo-200">14-day free trial · No credit card required · Cancel anytime</p>
+          <p className="text-sm text-gray-500 mt-5">14-day free trial · No credit card required · Cancel anytime</p>
         </div>
       </section>
 
-      <section className="bg-indigo-50 py-16 px-4">
-        <div className="max-w-5xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-8">
-          {[
-            { stat: "4.2 hrs", label: "Average time saved per paper vs. manual creation", icon: Clock },
-            { stat: "28+", label: "Indian state boards + CBSE & ICSE supported from day one", icon: Globe },
-            { stat: "50,000+", label: "Board-verified questions across subjects and classes", icon: FileText },
-          ].map(({ stat, label, icon: Icon }) => (
-            <div key={stat} className="text-center bg-white rounded-2xl p-8 shadow-sm card-hover">
-              <Icon className="w-10 h-10 text-indigo-600 mx-auto mb-3" />
-              <div className="text-5xl font-extrabold text-indigo-700 mb-2">{stat}</div>
-              <p className="text-gray-600">{label}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      <section id="features" className="py-20 px-4">
-        <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-14">
-            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">Everything You Need. Nothing You Don&apos;t.</h2>
-            <p className="text-gray-500 text-lg max-w-2xl mx-auto">Purpose-built for Indian school teachers and administrators.</p>
-          </div>
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {[
-              { icon: Globe, title: "All 28 State Boards + CBSE/ICSE", desc: "Not just CBSE. Maharashtra, Tamil Nadu, Kerala, Rajasthan — every state board mapped with accurate syllabus data." },
-              { icon: Zap, title: "AI-Powered Question Suggestions", desc: "Smart recommendations based on topic, difficulty, past paper patterns, and the specific board you're targeting." },
-              { icon: FileText, title: "PDF Export with School Branding", desc: "Your logo, your school name, your format. Export publication-ready papers that look professional instantly." },
-              { icon: BarChart3, title: "Visualise Your Paper Balance", desc: "See distribution of topics, difficulty, and question types as you build — so no chapter gets ignored." },
-              { icon: Users, title: "Team Collaboration for Institutes", desc: "Multiple teachers can co-create a single paper. Admins manage access, roles, and institute-wide templates." },
-              { icon: Shield, title: "Your Data, Your Questions", desc: "Add custom questions, edit existing ones, and build a private question bank that grows with your school." },
-            ].map(({ icon: Icon, title, desc }) => (
-              <div key={title} className="bg-gray-50 rounded-2xl p-6 card-hover border border-gray-100">
-                <div className="bg-indigo-100 w-12 h-12 rounded-xl flex items-center justify-center mb-4">
-                  <Icon className="w-6 h-6 text-indigo-600" />
-                </div>
-                <h3 className="font-bold text-gray-900 mb-2">{title}</h3>
-                <p className="text-gray-500 text-sm leading-relaxed">{desc}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <section id="boards" className="bg-gray-900 text-white py-16 px-4">
-        <div className="max-w-5xl mx-auto text-center">
-          <h2 className="text-3xl font-bold mb-4">Every Board. Every State.</h2>
-          <p className="text-gray-400 mb-10">From Kashmir to Kanyakumari — AT Tool covers the full map of Indian school education.</p>
-          <div className="flex flex-wrap justify-center gap-3">
-            {["CBSE", "ICSE", "Maharashtra", "Tamil Nadu", "Karnataka", "Kerala", "Gujarat", "Rajasthan", "UP Board", "MP Board", "West Bengal", "Punjab", "Haryana", "Bihar", "Odisha", "Assam", "Telangana", "Andhra Pradesh", "Delhi", "+ 12 more boards"].map((b) => (
-              <span key={b} className="bg-indigo-800 text-indigo-100 px-3 py-1.5 rounded-lg text-sm font-medium">{b}</span>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <section id="testimonials" className="py-20 px-4 bg-indigo-50">
-        <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-3">Real Teachers. Real Results.</h2>
-            <div className="flex justify-center gap-1 mb-2">{[1,2,3,4,5].map((i) => <Star key={i} className="w-5 h-5 fill-yellow-400 text-yellow-400" />)}</div>
-            <p className="text-gray-500">Rated 4.8/5 by 1,200+ educators across India</p>
-          </div>
-          <div className="grid md:grid-cols-3 gap-6">
-            {testimonials.map((t) => (
-              <div key={t.name} className="bg-white rounded-2xl p-6 shadow-sm card-hover border border-gray-100">
-                <div className="flex gap-1 mb-4">{[1,2,3,4,5].map((i) => <Star key={i} className="w-4 h-4 fill-yellow-400 text-yellow-400" />)}</div>
-                <p className="text-gray-700 italic text-sm leading-relaxed mb-6">&ldquo;{t.quote}&rdquo;</p>
-                <div>
-                  <div className="font-semibold text-gray-900">{t.name}</div>
-                  <div className="text-sm text-indigo-600">{t.title}</div>
-                  <div className="text-xs text-gray-400">{t.school}</div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <section id="pricing" className="py-20 px-4">
+      {/* Why Ethical AI */}
+      <section className="py-20 px-6 bg-[#0D0820]">
         <div className="max-w-5xl mx-auto">
-          <div className="text-center mb-14">
-            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">Transparent Pricing. Zero Surprises.</h2>
-            <p className="text-gray-500 text-lg">Both plans include a 14-day free trial. No credit card needed to start.</p>
-          </div>
-          <div className="grid md:grid-cols-2 gap-8 max-w-3xl mx-auto">
-            <div className="border-2 border-gray-200 rounded-2xl p-8">
-              <div className="text-sm font-semibold text-indigo-600 mb-2">STARTER</div>
-              <div className="flex items-baseline gap-1 mb-2">
-                <span className="text-4xl font-extrabold text-gray-900">₹799</span>
-                <span className="text-gray-500">/month</span>
+          <h2 className="text-3xl font-bold text-center mb-3 text-white">Why Ethical AI?</h2>
+          <p className="text-center text-gray-400 mb-12">We built this platform on three uncompromising principles.</p>
+          <div className="grid md:grid-cols-3 gap-6">
+            {[
+              { icon: "🚫", title: "No Real People", desc: "Every character is 100% AI-generated from scratch. No photos of real individuals were used in training or output." },
+              { icon: "🤖", title: "Fully Synthetic", desc: "Our models produce entirely synthetic imagery. No real likenesses, no non-consensual deepfakes — ever." },
+              { icon: "🔒", title: "Privacy First", desc: "All generated content is private by default. Only you can see your creations unless you explicitly choose to share." },
+            ].map((item) => (
+              <div key={item.title} className="glass-card p-8 card-hover text-center">
+                <div className="text-4xl mb-4">{item.icon}</div>
+                <h3 className="text-lg font-bold text-white mb-3">{item.title}</h3>
+                <p className="text-gray-400 text-sm leading-relaxed">{item.desc}</p>
               </div>
-              <p className="text-gray-500 text-sm mb-6">Perfect for individual teachers or small schools</p>
-              <ul className="space-y-3 mb-8">
-                {["Up to 3 teachers", "All 28+ boards", "50 papers/month", "PDF export with branding", "Basic question bank", "Email support"].map(f => (
-                  <li key={f} className="flex items-center gap-2 text-sm text-gray-700">
-                    <CheckCircle className="w-4 h-4 text-green-500 shrink-0" />{f}
-                  </li>
-                ))}
-              </ul>
-              <Link href="/signup?plan=starter" className="w-full block text-center border-2 border-indigo-600 text-indigo-600 font-semibold py-3 rounded-xl hover:bg-indigo-50 transition">
-                Start Free Trial
-              </Link>
-            </div>
-            <div className="border-2 border-indigo-600 rounded-2xl p-8 bg-indigo-50 relative">
-              <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-indigo-600 text-white text-xs font-bold px-4 py-1 rounded-full">MOST POPULAR</div>
-              <div className="text-sm font-semibold text-indigo-600 mb-2">PRO</div>
-              <div className="flex items-baseline gap-1 mb-2">
-                <span className="text-4xl font-extrabold text-gray-900">₹5,999</span>
-                <span className="text-gray-500">/month</span>
-              </div>
-              <p className="text-gray-500 text-sm mb-6">For schools and educational institutes</p>
-              <ul className="space-y-3 mb-8">
-                {["Unlimited teachers", "All 28+ boards", "Unlimited papers", "AI question suggestions", "Collaborative editing", "Admin dashboard", "LMS integration", "Custom templates", "Priority support + onboarding call"].map(f => (
-                  <li key={f} className="flex items-center gap-2 text-sm text-gray-700">
-                    <CheckCircle className="w-4 h-4 text-green-500 shrink-0" />{f}
-                  </li>
-                ))}
-              </ul>
-              <Link href="/signup?plan=pro" className="w-full block text-center bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-xl transition">
-                Start Free Trial
-              </Link>
-            </div>
+            ))}
           </div>
-          <p className="text-center text-gray-400 text-sm mt-6">Prices in Indian Rupees (INR) · GST applicable · Annual plans available at 20% discount</p>
         </div>
       </section>
 
-      <section id="faq" className="bg-gray-50 py-20 px-4">
-        <div className="max-w-3xl mx-auto">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold text-gray-900 mb-3">You Have Questions. We Have Answers.</h2>
+      {/* Features */}
+      <section id="features" className="py-20 px-6 bg-[#0F0A1E]">
+        <div className="max-w-6xl mx-auto">
+          <h2 className="text-3xl font-bold text-center mb-3 text-white">Everything You Need</h2>
+          <p className="text-center text-gray-400 mb-12">A complete studio in your browser.</p>
+          <div className="grid md:grid-cols-3 gap-6">
+            {[
+              { icon: "✏️", title: "Character Customization", desc: "Design unique AI characters with custom hair, body type, attire, and personality." },
+              { icon: "🎬", title: "Text-to-Video", desc: "Describe any scene and our AI renders a high-fidelity synthetic video in seconds." },
+              { icon: "🖼️", title: "Private Gallery", desc: "All your creations stored securely in your personal encrypted gallery." },
+              { icon: "🎙️", title: "AI Voice", desc: "Add synthetic voice-over to any video. Choose from 20+ voice styles." },
+              { icon: "📽️", title: "Pro Long-Form", desc: "Pro users unlock up to 5-minute videos with narrative arcs and multi-scene cuts." },
+              { icon: "🌐", title: "Community", desc: "Opt-in community feed to share your synthetic creations and discover others." },
+            ].map((f) => (
+              <div key={f.title} className="glass-card p-7 card-hover">
+                <div className="text-3xl mb-3">{f.icon}</div>
+                <h3 className="font-bold text-white mb-2">{f.title}</h3>
+                <p className="text-gray-400 text-sm leading-relaxed">{f.desc}</p>
+              </div>
+            ))}
           </div>
+        </div>
+      </section>
+
+      {/* How It Works */}
+      <section id="how-it-works" className="py-20 px-6 bg-[#0D0820]">
+        <div className="max-w-4xl mx-auto">
+          <h2 className="text-3xl font-bold text-center mb-12 text-white">How It Works</h2>
+          <div className="grid md:grid-cols-3 gap-8">
+            {[
+              { n: "1", title: "Create Your Characters", desc: "Use our visual editor to design AI characters. Choose hair, body type, attire — fully synthetic." },
+              { n: "2", title: "Write Your Scene", desc: "Describe what you want in plain English. Our AI understands context, mood, and style." },
+              { n: "3", title: "Generate & Enjoy", desc: "Hit generate and receive your synthetic video in 30–60 seconds. Download or save to gallery." },
+            ].map((step) => (
+              <div key={step.n} className="text-center">
+                <div className="w-14 h-14 rounded-full bg-purple-600 flex items-center justify-center text-2xl font-black mx-auto mb-4">
+                  {step.n}
+                </div>
+                <h3 className="font-bold text-white mb-2">{step.title}</h3>
+                <p className="text-gray-400 text-sm leading-relaxed">{step.desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Pricing */}
+      <section id="pricing" className="py-20 px-6 bg-[#0F0A1E]">
+        <div className="max-w-4xl mx-auto">
+          <h2 className="text-3xl font-bold text-center mb-3 text-white">Simple Pricing</h2>
+          <p className="text-center text-gray-400 mb-12">Start free. Upgrade anytime.</p>
+          <div className="grid md:grid-cols-2 gap-8">
+            <div className="glass-card p-8">
+              <div className="inline-block px-3 py-1 rounded-full text-xs bg-gray-700 text-gray-300 mb-4">14-day free trial</div>
+              <h3 className="text-2xl font-bold text-white mb-1">Starter</h3>
+              <div className="text-4xl font-black text-white mb-6">$10<span className="text-lg font-normal text-gray-400">/mo</span></div>
+              <ul className="space-y-3 mb-8">
+                {["2 custom characters", "10 videos/month (max 30s)", "Private gallery", "720p quality"].map((f) => (
+                  <li key={f} className="flex items-center gap-2 text-gray-300 text-sm">
+                    <CheckCircle className="w-4 h-4 text-purple-400 flex-shrink-0" /> {f}
+                  </li>
+                ))}
+              </ul>
+              <Link href="/signup?plan=starter" className="block w-full text-center py-3 border border-purple-600 text-purple-400 rounded-lg hover:bg-purple-600 hover:text-white transition-colors font-semibold">
+                Start Free Trial
+              </Link>
+            </div>
+            <div className="glass-card p-8 relative" style={{ borderColor: "rgb(168 85 247 / 0.7)" }}>
+              <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 rounded-full text-xs bg-purple-600 text-white font-bold whitespace-nowrap">MOST POPULAR</div>
+              <div className="inline-block px-3 py-1 rounded-full text-xs bg-purple-900/50 text-purple-300 mb-4">14-day free trial</div>
+              <h3 className="text-2xl font-bold text-white mb-1">Pro</h3>
+              <div className="text-4xl font-black text-white mb-6">$50<span className="text-lg font-normal text-gray-400">/mo</span></div>
+              <ul className="space-y-3 mb-8">
+                {["5 custom characters", "Unlimited videos (up to 5min)", "Private gallery + community", "4K quality", "AI Voice-over", "Narrative arc scenes", "Priority generation"].map((f) => (
+                  <li key={f} className="flex items-center gap-2 text-gray-300 text-sm">
+                    <CheckCircle className="w-4 h-4 text-purple-400 flex-shrink-0" /> {f}
+                  </li>
+                ))}
+              </ul>
+              <Link href="/signup?plan=pro" className="block w-full text-center py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors font-semibold">
+                Start Free Trial
+              </Link>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Testimonials */}
+      <section className="py-20 px-6 bg-[#0D0820]">
+        <div className="max-w-5xl mx-auto">
+          <h2 className="text-3xl font-bold text-center mb-12 text-white">What Creators Say</h2>
+          <div className="grid md:grid-cols-3 gap-6">
+            {[
+              { quote: "Finally an adult platform that respects both creators and privacy. The AI quality is stunning.", author: "J.K., Creative Director" },
+              { quote: "The character customization is insane. I spent hours just designing. The output is photorealistic.", author: "M.R., Digital Artist" },
+              { quote: "Pro tier is worth every penny. Long-form narrative videos are a game changer for storytelling.", author: "D.T., Content Creator" },
+            ].map((t) => (
+              <div key={t.author} className="glass-card p-7">
+                <div className="flex gap-1 mb-4">
+                  {[1,2,3,4,5].map((i) => <Star key={i} className="w-4 h-4 text-yellow-400 fill-yellow-400" />)}
+                </div>
+                <p className="text-gray-300 text-sm mb-4 leading-relaxed italic">&ldquo;{t.quote}&rdquo;</p>
+                <p className="text-gray-500 text-xs">— {t.author}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* FAQ */}
+      <section id="faq" className="py-20 px-6 bg-[#0F0A1E]">
+        <div className="max-w-3xl mx-auto">
+          <h2 className="text-3xl font-bold text-center mb-12 text-white">Frequently Asked Questions</h2>
           <div className="space-y-4">
-            {faqs.map((f) => (
-              <details key={f.q} className="border border-gray-200 rounded-xl p-5 group bg-white">
-                <summary className="flex justify-between items-center cursor-pointer font-semibold text-gray-900 text-base list-none">
-                  {f.q}
+            {[
+              { q: "Are any real people used in the content?", a: "Absolutely not. Every character is generated entirely by AI models trained on synthetic data. No real photos or likenesses of actual people are ever used in training or output." },
+              { q: "Is my generated content private?", a: "Yes. All content you generate is private by default and stored with end-to-end encryption. Only you can access it. The community sharing feature is strictly opt-in." },
+              { q: "What content quality can I expect?", a: "Starter plan delivers 720p video at up to 30 seconds. Pro plan delivers 4K quality with videos up to 5 minutes, AI voice-over, and multi-scene narrative arcs." },
+              { q: "Can I cancel my subscription anytime?", a: "Yes, you can cancel at any time from your billing settings. You retain access until the end of your billing period with no additional charges." },
+              { q: "Is this legal to use?", a: "Yes. All content is 100% AI-generated synthetic media with no real persons involved. We comply with 18 U.S.C. 2257 record-keeping requirements for synthetic content platforms." },
+            ].map((faq) => (
+              <details key={faq.q} className="glass-card">
+                <summary className="p-6 cursor-pointer text-white font-semibold flex items-center justify-between list-none">
+                  {faq.q}
+                  <span className="text-purple-400 ml-4 flex-shrink-0">+</span>
                 </summary>
-                <p className="mt-3 text-gray-600 leading-relaxed text-sm">{f.a}</p>
+                <div className="px-6 pb-6 text-gray-400 text-sm leading-relaxed">{faq.a}</div>
               </details>
             ))}
           </div>
         </div>
       </section>
 
-      <section className="gradient-hero text-white py-20 px-4 text-center">
-        <h2 className="text-3xl md:text-4xl font-bold mb-4">Your Next Question Paper Takes 10 Minutes.</h2>
-        <p className="text-indigo-100 text-lg mb-8 max-w-2xl mx-auto">Join 1,200+ Indian schools already saving hours every week. Start free — no card needed.</p>
-        <Link href="/signup" className="inline-flex items-center gap-2 bg-yellow-400 hover:bg-yellow-300 text-gray-900 font-bold px-10 py-4 rounded-xl text-lg transition">
-          Generate My First Paper Free <ArrowRight className="w-5 h-5" />
-        </Link>
-      </section>
-
-      <footer className="bg-gray-900 text-gray-400 py-12 px-4">
-        <div className="max-w-6xl mx-auto grid md:grid-cols-4 gap-8">
-          <div>
-            <div className="flex items-center gap-2 font-bold text-white mb-3">
-              <div className="bg-indigo-600 rounded-lg p-1"><BookOpen className="w-4 h-4" /></div>
-              AT Tool
-            </div>
-            <p className="text-sm">The most accurate AI-powered question paper generator for Indian educators.</p>
+      {/* Footer */}
+      <footer className="border-t border-purple-900/30 py-10 px-6 bg-[#0D0820]">
+        <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-2">
+            <Gem className="text-purple-400 w-5 h-5" />
+            <span className="font-bold text-white">AdultEntertain</span>
           </div>
-          <div>
-            <div className="font-semibold text-white mb-3">Product</div>
-            <div className="space-y-2 text-sm">
-              <div><a href="#features" className="hover:text-white">Features</a></div>
-              <div><a href="#pricing" className="hover:text-white">Pricing</a></div>
-            </div>
+          <div className="flex flex-wrap gap-6 text-sm text-gray-400">
+            <Link href="/terms" className="hover:text-white transition-colors">Terms of Service</Link>
+            <Link href="/privacy" className="hover:text-white transition-colors">Privacy Policy</Link>
+            <a href="#" className="hover:text-white transition-colors">DMCA</a>
+            <a href="#" className="hover:text-white transition-colors">18 U.S.C. 2257</a>
           </div>
-          <div>
-            <div className="font-semibold text-white mb-3">Company</div>
-            <div className="space-y-2 text-sm">
-              <div><a href="#" className="hover:text-white">About</a></div>
-              <div><a href="#" className="hover:text-white">Contact</a></div>
-            </div>
-          </div>
-          <div>
-            <div className="font-semibold text-white mb-3">Legal</div>
-            <div className="space-y-2 text-sm">
-              <div><Link href="/terms" className="hover:text-white">Terms of Service</Link></div>
-              <div><Link href="/privacy" className="hover:text-white">Privacy Policy</Link></div>
-            </div>
-          </div>
-        </div>
-        <div className="max-w-6xl mx-auto mt-8 pt-8 border-t border-gray-800 text-center text-sm">
-          © 2026 AT Tool. All rights reserved. Made with ❤️ for Indian Educators.
+          <p className="text-xs text-gray-600">© 2026 AdultEntertain. All content is 100% AI-synthetic.</p>
         </div>
       </footer>
     </div>
