@@ -366,7 +366,9 @@ export default function CreatePage() {
           </div>
           <div className="mb-4">
             <div className="font-medium text-white">{lastVideo.title}</div>
-            <div className="text-sm text-gray-400 mt-1">{lastVideo.prompt}</div>
+            <div className="text-sm text-gray-400 mt-1 line-clamp-2 overflow-hidden">
+              {lastVideo.prompt.length > 120 ? lastVideo.prompt.slice(0, 120) + "..." : lastVideo.prompt}
+            </div>
           </div>
           <div className="flex gap-3 flex-wrap">
             <button
