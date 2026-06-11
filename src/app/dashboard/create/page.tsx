@@ -130,6 +130,59 @@ export default function CreatePage() {
         <p className="text-gray-400 text-sm mt-1">Design your scene and generate a synthetic AI video</p>
       </div>
 
+      {/* Output — shown at TOP after generation */}
+      {(isGenerating || lastVideo) && (
+        <div className="mb-6 rounded-xl border border-purple-500/30 bg-[#1A1030] p-5">
+          {isGenerating ? (
+            <div className="text-center py-8">
+              <div className="w-16 h-16 border-4 border-purple-600 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+              <p className="text-white font-medium">Generating your scene...</p>
+              <div className="mt-4 h-2 bg-purple-900/40 rounded-full overflow-hidden max-w-xs mx-auto">
+                <div className="h-full bg-gradient-to-r from-purple-600 to-pink-500 transition-all duration-200 rounded-full" style={{ width: `${progress}%` }} />
+              </div>
+              <p className="text-xs text-gray-400 mt-2">{progress}%</p>
+            </div>
+          ) : lastVideo && (
+            <>
+              <h3 className="text-lg font-semibold mb-4 text-white">✓ Generated Video</h3>
+              <div className={`w-full h-64 bg-gradient-to-br ${lastVideo.thumbnailColor} rounded-xl flex items-center justify-center relative mb-4`}>
+                <div className="w-16 h-16 bg-black/40 rounded-full flex items-center justify-center">
+                  <Play className="w-8 h-8 text-white ml-1" />
+                </div>
+                <div className="absolute bottom-3 right-3 bg-black/60 text-white text-xs px-2 py-1 rounded">
+                  {lastVideo.duration}s · {lastVideo.style}
+                </div>
+              </div>
+              <div className="mb-4">
+                <div className="font-medium text-white">{lastVideo.title}</div>
+                <div className="text-sm text-gray-400 mt-1">
+                  {lastVideo.prompt.length > 120 ? lastVideo.prompt.slice(0, 120) + "..." : lastVideo.prompt}
+                </div>
+              </div>
+              <div className="flex gap-3 flex-wrap">
+                <button
+                  onClick={() => setSavedToGallery(true)}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm transition-colors ${savedToGallery ? "bg-green-600 text-white" : "bg-purple-600 hover:bg-purple-700 text-white"}`}
+                >
+                  <Save className="w-4 h-4" />{savedToGallery ? "Saved ✓" : "Save to Gallery"}
+                </button>
+                <button className="flex items-center gap-2 border border-purple-500/30 hover:bg-purple-500/10 text-gray-300 px-4 py-2 rounded-lg text-sm transition-colors">
+                  <Download className="w-4 h-4" />Download
+                </button>
+                {isPro && (
+                  <button className="flex items-center gap-2 border border-purple-500/30 hover:bg-purple-500/10 text-gray-300 px-4 py-2 rounded-lg text-sm transition-colors">
+                    <Share2 className="w-4 h-4" />Share to Community
+                  </button>
+                )}
+                <button onClick={handleGenerate} className="flex items-center gap-2 border border-purple-500/30 hover:bg-purple-500/10 text-gray-300 px-4 py-2 rounded-lg text-sm transition-colors">
+                  <RefreshCw className="w-4 h-4" />Regenerate
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
       <div className="grid lg:grid-cols-2 gap-6">
         {/* Left Panel */}
         <div className="space-y-5">
@@ -339,61 +392,8 @@ export default function CreatePage() {
           {isGenerating ? "Generating..." : "Generate Video"}
         </button>
 
-        {isGenerating && (
-          <div className="mt-3">
-            <div className="h-2 bg-purple-900/40 rounded-full overflow-hidden">
-              <div
-                className="h-full bg-gradient-to-r from-purple-600 to-pink-500 transition-all duration-200 rounded-full"
-                style={{ width: `${progress}%` }}
-              />
-            </div>
-            <p className="text-xs text-gray-400 text-center mt-2">Rendering your scene... {progress}%</p>
-          </div>
-        )}
       </div>
 
-      {/* Output */}
-      {lastVideo && !isGenerating && (
-        <div className="mt-6 rounded-xl border border-purple-500/20 bg-[#1A1030] p-5">
-          <h3 className="text-lg font-semibold mb-4">Generated Video</h3>
-          <div className={`w-full max-w-lg h-64 bg-gradient-to-br ${lastVideo.thumbnailColor} rounded-xl flex items-center justify-center relative mb-4`}>
-            <div className="w-16 h-16 bg-black/40 rounded-full flex items-center justify-center">
-              <Play className="w-8 h-8 text-white ml-1" />
-            </div>
-            <div className="absolute bottom-3 right-3 bg-black/60 text-white text-xs px-2 py-1 rounded">
-              {lastVideo.duration}s · {lastVideo.style}
-            </div>
-          </div>
-          <div className="mb-4">
-            <div className="font-medium text-white">{lastVideo.title}</div>
-            <div className="text-sm text-gray-400 mt-1 line-clamp-2 overflow-hidden">
-              {lastVideo.prompt.length > 120 ? lastVideo.prompt.slice(0, 120) + "..." : lastVideo.prompt}
-            </div>
-          </div>
-          <div className="flex gap-3 flex-wrap">
-            <button
-              onClick={() => { if (lastVideo) { setSavedToGallery(true); } }}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm transition-colors ${savedToGallery ? "bg-green-600 text-white" : "bg-purple-600 hover:bg-purple-700 text-white"}`}
-            >
-              <Save className="w-4 h-4" />{savedToGallery ? "Saved to Gallery ✓" : "Save to Gallery"}
-            </button>
-            <button className="flex items-center gap-2 border border-purple-500/30 hover:bg-purple-500/10 text-gray-300 px-4 py-2 rounded-lg text-sm transition-colors">
-              <Download className="w-4 h-4" />Download
-            </button>
-            {isPro && (
-              <button className="flex items-center gap-2 border border-purple-500/30 hover:bg-purple-500/10 text-gray-300 px-4 py-2 rounded-lg text-sm transition-colors">
-                <Share2 className="w-4 h-4" />Share to Community
-              </button>
-            )}
-            <button
-              onClick={handleGenerate}
-              className="flex items-center gap-2 border border-purple-500/30 hover:bg-purple-500/10 text-gray-300 px-4 py-2 rounded-lg text-sm transition-colors"
-            >
-              <RefreshCw className="w-4 h-4" />Regenerate
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
