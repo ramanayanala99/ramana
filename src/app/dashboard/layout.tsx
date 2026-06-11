@@ -105,7 +105,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       )}
 
       {/* Main Content */}
-      <div className="flex-1 md:ml-56 flex flex-col min-h-screen">
+      <div className="flex-1 md:ml-56 flex flex-col min-h-screen min-w-0 overflow-x-hidden">
         {/* Top Bar */}
         <header className="h-14 border-b border-purple-500/20 bg-[#0F0A1E]/80 backdrop-blur-sm flex items-center justify-between px-4 sticky top-0 z-20">
           <button
@@ -136,7 +136,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </header>
 
         {/* Page Content */}
-        <main className="flex-1 p-6">
+        <main className="flex-1 p-4 md:p-6 overflow-x-hidden">
           {children}
         </main>
       </div>

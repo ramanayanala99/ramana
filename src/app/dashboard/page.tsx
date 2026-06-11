@@ -78,7 +78,7 @@ export default function DashboardHome() {
       {/* Quick Create */}
       <div className="rounded-xl border border-purple-500/20 bg-[#1A1030] p-6">
         <h2 className="text-lg font-semibold mb-3">Quick Create</h2>
-        <div className="flex gap-3">
+        <div className="flex gap-3 flex-wrap sm:flex-nowrap">
           <input
             value={quickPrompt}
             onChange={(e) => setQuickPrompt(e.target.value)}
