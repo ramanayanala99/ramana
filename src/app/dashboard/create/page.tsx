@@ -145,11 +145,18 @@ export default function CreatePage() {
           ) : lastVideo && (
             <>
               <h3 className="text-lg font-semibold mb-4 text-white">✓ Generated Video</h3>
-              <div className={`w-full h-64 bg-gradient-to-br ${lastVideo.thumbnailColor} rounded-xl flex items-center justify-center relative mb-4`}>
-                <div className="w-16 h-16 bg-black/40 rounded-full flex items-center justify-center">
-                  <Play className="w-8 h-8 text-white ml-1" />
-                </div>
-                <div className="absolute bottom-3 right-3 bg-black/60 text-white text-xs px-2 py-1 rounded">
+              <div className="w-full rounded-xl overflow-hidden relative mb-4 bg-black">
+                <video
+                  key={lastVideo.id}
+                  controls
+                  autoPlay
+                  loop
+                  className="w-full max-h-80 rounded-xl"
+                  poster=""
+                >
+                  <source src="https://www.w3schools.com/html/mov_bbb.mp4" type="video/mp4" />
+                </video>
+                <div className="absolute bottom-3 right-3 bg-black/60 text-white text-xs px-2 py-1 rounded pointer-events-none">
                   {lastVideo.duration}s · {lastVideo.style}
                 </div>
               </div>
